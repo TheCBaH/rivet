@@ -1338,8 +1338,8 @@ let render_std rows =
                 builder\n\
                \   for each standard row XLEN %d has, named like Riscv_std_rows%d. *)\n\n\
                 [@@@ocaml.warning \"-32\"]\n\n\
-                open Riscv_asm.Rowkit\n\
-                module R = Riscv_family_encode.Riscv_std_rows%d\n\n"
+                open Rivet_riscv_asm.Rowkit\n\
+                module R = Rivet_riscv_family_encode.Riscv_std_rows%d\n\n"
                xlen xlen xlen;
            ]
           @ List.filter_map line mnemonics)

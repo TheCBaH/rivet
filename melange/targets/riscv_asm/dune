@@ -8,25 +8,33 @@
  (files ../../../targets/riscv_asm/*.mli))
 
 (library
- (name riscv_asm)
- (modules riscv_asm riscv_asm_rowkit)
+ (name rivet_riscv_asm)
+ (modules rivet_riscv_asm riscv_asm_rowkit)
  (modes byte native melange)
- (libraries rivet_foundation rivet_asm_core riscv_family_encode)
+ (libraries rivet_foundation rivet_asm_core rivet_riscv_family_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name riscv32_asm)
- (modules riscv32_asm riscv_asm_rows32)
+ (name rivet_riscv32_asm)
+ (modules rivet_riscv32_asm riscv_asm_rows32)
  (modes byte native melange)
- (libraries rivet_foundation rivet_asm_core riscv_family_encode riscv_asm)
+ (libraries
+  rivet_foundation
+  rivet_asm_core
+  rivet_riscv_family_encode
+  rivet_riscv_asm)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name riscv64_asm)
- (modules riscv64_asm riscv_asm_rows64)
+ (name rivet_riscv64_asm)
+ (modules rivet_riscv64_asm riscv_asm_rows64)
  (modes byte native melange)
- (libraries rivet_foundation rivet_asm_core riscv_family_encode riscv_asm)
+ (libraries
+  rivet_foundation
+  rivet_asm_core
+  rivet_riscv_family_encode
+  rivet_riscv_asm)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

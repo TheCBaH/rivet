@@ -28,11 +28,11 @@
   rivet_aarch64
   x86_32
   x86_64
-  riscv32_encode
-  riscv64_encode
-  riscv64
-  riscv_family_encode
-  riscv_family
+  rivet_riscv32_encode
+  rivet_riscv64_encode
+  rivet_riscv64
+  rivet_riscv_family_encode
+  rivet_riscv_family
   x86_32_encode
   x86_64_encode
   x86_family_encode

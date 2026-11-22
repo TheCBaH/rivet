@@ -3651,7 +3651,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let pad_section_to_alignment = true
 end
 
-(* The standard extensions, as a named functor: [Riscv_family.Make] applies [Make_with] to the
+(* The standard extensions, as a named functor: [Rivet_riscv_family.Make] applies [Make_with] to the
    same path, so the encoder and the text frontend of one profile share their types. An anonymous
    structure here would make every type of the two instances distinct. *)
 module Standard (P : PROFILE) = struct

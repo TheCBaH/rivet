@@ -8,7 +8,7 @@ let print instruction type_char =
 
 module X = Rivet_driver_direct.Pipeline_direct.Make (X86_64_encode)
 module A = Rivet_driver_direct.Pipeline_direct.Make (Rivet_aarch64_encode)
-module R = Rivet_driver_direct.Pipeline_direct.Make (Riscv32_encode)
+module R = Rivet_driver_direct.Pipeline_direct.Make (Rivet_riscv32_encode)
 
 let show = function
   | Ok rs -> List.iter (fun (r : Rivet_target_encode.disasm_record) -> print_endline r.text) rs
@@ -17,7 +17,7 @@ let show = function
 let () =
   print X86_64_encode.Instruction.pp_gnu '@';
   print Rivet_aarch64_encode.Instruction.pp_gnu '%';
-  print Riscv32_encode.Instruction.pp_gnu '@';
+  print Rivet_riscv32_encode.Instruction.pp_gnu '@';
   let b = "\x13\x05\x15\x00" in
   show (X.disassemble_records ~address:0L b);
   show (A.disassemble_records ~address:0L b);

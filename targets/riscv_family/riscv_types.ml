@@ -1,4 +1,4 @@
-(* RISC-V types shared by every instance of {!Riscv_family_encode.Make_with}: riscv32, riscv64
+(* RISC-V types shared by every instance of {!Rivet_riscv_family_encode.Make_with}: riscv32, riscv64
    and vendor compositions agree on registers, operands and opcodes. *)
 
 open Rivet_foundation
@@ -917,7 +917,7 @@ module Opcode = struct
     | Table of Row.t  (** a generated or vendor table row (DEC-RV-TABLE) *)
 
   (* The spelling of a hand-written opcode; a table row's is its row's, which only an instance of
-     {!Riscv_family_encode.Make_with} knows. *)
+     {!Rivet_riscv_family_encode.Make_with} knows. *)
   let mnemonic = function
     | Table _ -> invalid_arg "Riscv_types.Opcode.mnemonic: a table row"
     | Add -> "add"

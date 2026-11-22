@@ -1,6 +1,6 @@
 (* The typed RISC-V operand kinds: each value reaches the encoding and comes back from it. *)
 
-module Types = Riscv_family_encode.Riscv_types
+module Types = Rivet_riscv_family_encode.Riscv_types
 module Rm = Types.Rm
 
 let%expect_test "every rounding mode round-trips through fcvt.w.s" =
@@ -47,7 +47,7 @@ let%expect_test "register indices are range-checked by class" =
     {| Xreg 31 some, Xreg 32 none, Xreg -1 none, Creg 7 none, Creg 8 some, Creg 15 some, Creg 16 none |}]
 
 let%expect_test "an FP instruction given integer registers is refused" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let x n = E.Operand.Reg (E.Reg.x n) in
   let insn = E.Instruction.mk E.Opcode.Fadd_s [ x 1; x 2; x 3 ] in
   (match E.lower_instruction E.default_state insn with
@@ -65,7 +65,7 @@ let%expect_test "an FP instruction given integer registers is refused" =
    single form; that form must encode, decode and re-encode to the same bytes. The auipc pairs
    decode only through the codec; they are listed. *)
 
-module type ENC = module type of Riscv64_encode
+module type ENC = module type of Rivet_riscv64_encode
 
 module Sweep (E : ENC) = struct
   let state = { E.default_state with E.rvc = true }
@@ -116,8 +116,8 @@ module Sweep (E : ENC) = struct
   let samples = List.map (fun op -> (op, sample op)) E.Opcode.all
 end
 
-module S64 = Sweep (Riscv64_encode)
-module S32 = Sweep (Riscv32_encode)
+module S64 = Sweep (Rivet_riscv64_encode)
+module S32 = Sweep (Rivet_riscv32_encode)
 
 (* Each opcode with its sample from either XLEN. *)
 let samples =
@@ -131,7 +131,7 @@ let samples =
     S64.samples S32.samples
 
 let%expect_test "every sampled opcode round-trips through its encoding" =
-  let name = Riscv64_encode.Opcode.name in
+  let name = Rivet_riscv64_encode.Opcode.name in
   let unsampled =
     List.filter_map (fun (op, s) -> if s = None then Some (name op) else None) samples
   in
@@ -187,8 +187,8 @@ let%expect_test "formerly undecodable opcodes round-trip on both XLENs" =
     Printf.printf "%s: %d of %d sampled, failed [%s]\n" label (List.length back) (List.length names)
       (String.concat " " failed)
   in
-  run "riscv32" S32.samples S32.reencoded Riscv32_encode.Opcode.name;
-  run "riscv64" S64.samples S64.reencoded Riscv64_encode.Opcode.name;
+  run "riscv32" S32.samples S32.reencoded Rivet_riscv32_encode.Opcode.name;
+  run "riscv64" S64.samples S64.reencoded Rivet_riscv64_encode.Opcode.name;
   [%expect {|
     riscv32: 33 of 44 sampled, failed []
     riscv64: 34 of 44 sampled, failed [] |}]
@@ -214,8 +214,8 @@ let%expect_test "hand-written decoder entries that overlap a standard row" =
     Printf.printf "%s: %d entries, overlaps [%s]\n" label (List.length entries)
       (String.concat " " overlaps)
   in
-  let module E32 = Riscv32_encode in
-  let module E64 = Riscv64_encode in
+  let module E32 = Rivet_riscv32_encode in
+  let module E64 = Rivet_riscv64_encode in
   check "riscv32" E32.Hand_decode.entries
     (fun e -> (E32.Opcode.name e.op, e.mask, e.match_))
     E32.Row.all
@@ -239,7 +239,7 @@ let%expect_test "hand-written decoder entries that overlap a standard row" =
    the canonical text re-assembles to the same bytes, or the word is declined (a [.word]). *)
 
 let%expect_test "every rounding field value round-trips or is a .word" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let rounds op = Option.is_some (E.default_rm op) || Option.is_some (E.f_fma_desc op) in
   let ops = List.filter rounds E.Opcode.all in
   let words = Hashtbl.create 8 and bad = ref [] in
@@ -291,7 +291,7 @@ let%expect_test "every rounding field value round-trips or is a .word" =
 (* {1 Derived encoding fields} *)
 
 let%expect_test "no lowering reaches an opcode without fields for its format" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let short = List.filter (fun ops -> List.length ops <= 3) S64.candidates in
   let mismatched =
     List.filter_map
@@ -317,7 +317,7 @@ let%expect_test "no lowering reaches an opcode without fields for its format" =
   [%expect {| mismatched: [] |}]
 
 let%expect_test "a form paired with an opcode of another format is refused" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let l =
     E.Lowered.R
       { op = E.Opcode.Lui; rd = E.Reg.x 1; rs1 = E.Reg.x 2; rs2 = Some (E.Reg.x 3); rm = None }
@@ -354,17 +354,17 @@ let%expect_test "every standard row name is its row's spelling" =
       !other (String.concat " " wrong)
   in
   let rows32 m =
-    match Riscv32_encode.Opcode.of_mnemonic m with
-    | Some (Riscv32_encode.Opcode.Table r) -> Some r
+    match Rivet_riscv32_encode.Opcode.of_mnemonic m with
+    | Some (Rivet_riscv32_encode.Opcode.Table r) -> Some r
     | _ -> None
   in
   let rows64 m =
-    match Riscv64_encode.Opcode.of_mnemonic m with
-    | Some (Riscv64_encode.Opcode.Table r) -> Some r
+    match Rivet_riscv64_encode.Opcode.of_mnemonic m with
+    | Some (Rivet_riscv64_encode.Opcode.Table r) -> Some r
     | _ -> None
   in
-  check "riscv32" Riscv32_encode.Std_row.all Riscv32_encode.Row.mnemonic rows32;
-  check "riscv64" Riscv64_encode.Std_row.all Riscv64_encode.Row.mnemonic rows64;
+  check "riscv32" Rivet_riscv32_encode.Std_row.all Rivet_riscv32_encode.Row.mnemonic rows32;
+  check "riscv64" Rivet_riscv64_encode.Std_row.all Rivet_riscv64_encode.Row.mnemonic rows64;
   [%expect
     {|
     riscv32: 1034 names, 24 only for the other XLEN, wrong []
@@ -383,7 +383,7 @@ module Lookup (E : ENC) = struct
           (fun r ->
             let row = E.Row.row r in
             if
-              String.equal row.Riscv_family_encode.Riscv_table_row.mnemonic s
+              String.equal row.Rivet_riscv_family_encode.Riscv_table_row.mnemonic s
               && (row.xlen = 0 || row.xlen = E.xlen)
             then Some (E.Opcode.Table r)
             else None)
@@ -402,8 +402,8 @@ module Lookup (E : ENC) = struct
 end
 
 let%expect_test "the spelling table reads every spelling as the linear search did" =
-  let module L32 = Lookup (Riscv32_encode) in
-  let module L64 = Lookup (Riscv64_encode) in
+  let module L32 = Lookup (Rivet_riscv32_encode) in
+  let module L64 = Lookup (Rivet_riscv64_encode) in
   L32.check "riscv32";
   L64.check "riscv64";
   [%expect {|
@@ -503,9 +503,11 @@ let%expect_test "no standard row is custom" =
   in
   Printf.printf "riscv32 [%s]\nriscv64 [%s]\n"
     (String.concat " "
-       (custom Riscv32_encode.Row.all Riscv32_encode.Row.cls Riscv32_encode.Row.mnemonic))
+       (custom Rivet_riscv32_encode.Row.all Rivet_riscv32_encode.Row.cls
+          Rivet_riscv32_encode.Row.mnemonic))
     (String.concat " "
-       (custom Riscv64_encode.Row.all Riscv64_encode.Row.cls Riscv64_encode.Row.mnemonic));
+       (custom Rivet_riscv64_encode.Row.all Rivet_riscv64_encode.Row.cls
+          Rivet_riscv64_encode.Row.mnemonic));
   [%expect {|
     riscv32 []
     riscv64 [] |}]
@@ -527,8 +529,8 @@ let%expect_test "a hand-written opcode's class is its encoding's" =
       (fun (op, s) ->
         let xlen, cls =
           match s with
-          | Some (`Rv64 _, _) -> (64, Riscv64_encode.Cls.of_opcode op)
-          | Some (`Rv32 _, _) -> (32, Riscv32_encode.Cls.of_opcode op)
+          | Some (`Rv64 _, _) -> (64, Rivet_riscv64_encode.Cls.of_opcode op)
+          | Some (`Rv32 _, _) -> (32, Rivet_riscv32_encode.Cls.of_opcode op)
           | None -> (0, Cls.Alu)
         in
         match s with
@@ -537,8 +539,9 @@ let%expect_test "a hand-written opcode's class is its encoding's" =
             if by_word = cls then None
             else
               Some
-                (Printf.sprintf "%s:%s/%s" (Riscv64_encode.Opcode.name op) (Cls.name cls)
-                   (Cls.name by_word))
+                (Printf.sprintf "%s:%s/%s"
+                   (Rivet_riscv64_encode.Opcode.name op)
+                   (Cls.name cls) (Cls.name by_word))
         | None -> None)
       samples
   in
@@ -548,7 +551,7 @@ let%expect_test "a hand-written opcode's class is its encoding's" =
 (* {1 Error payloads} *)
 
 let%expect_test "lowering errors name their opcode" =
-  let module E = Riscv32_encode in
+  let module E = Rivet_riscv32_encode in
   let x n = E.Operand.Reg (E.Reg.x n) in
   let kind insn =
     match E.lower_instruction E.default_state insn with
@@ -804,26 +807,28 @@ let%expect_test "every register of a class assembles in an instruction of that c
 (* {1 One instruction type} *)
 
 let%expect_test "every instance and the builders share one Instruction.t" =
-  let module Ops = Riscv_family_encode.Riscv_ops in
+  let module Ops = Rivet_riscv_family_encode.Riscv_ops in
   let built : Types.Instruction.t = Ops.add Types.Xreg.a0 Types.Xreg.a1 Types.Xreg.a2 in
-  let as64 (i : Riscv32_encode.Instruction.t) : Riscv64_encode.Instruction.t = i in
+  let as64 (i : Rivet_riscv32_encode.Instruction.t) : Rivet_riscv64_encode.Instruction.t = i in
   let bytes32 =
-    match Riscv32_encode.lower_instruction Riscv32_encode.default_state built with
+    match Rivet_riscv32_encode.lower_instruction Rivet_riscv32_encode.default_state built with
     | Ok [ l ] -> (
-        match Riscv32_encode.encode l with
+        match Rivet_riscv32_encode.encode l with
         | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Rivet_asm_core.Lowered_ast.bytes
         | _ -> 0L)
     | _ -> 0L
   in
   let bytes64 =
-    match Riscv64_encode.lower_instruction Riscv64_encode.default_state (as64 built) with
+    match
+      Rivet_riscv64_encode.lower_instruction Rivet_riscv64_encode.default_state (as64 built)
+    with
     | Ok [ l ] -> (
-        match Riscv64_encode.encode l with
+        match Rivet_riscv64_encode.encode l with
         | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Rivet_asm_core.Lowered_ast.bytes
         | _ -> 0L)
     | _ -> 0L
   in
   Printf.printf "%s: riscv32 %08Lx, riscv64 %08Lx\n"
-    (Fmt.to_to_string Riscv32_encode.Instruction.pp built)
+    (Fmt.to_to_string Rivet_riscv32_encode.Instruction.pp built)
     bytes32 bytes64;
   [%expect {| add x10, x11, x12: riscv32 00c58533, riscv64 00c58533 |}]

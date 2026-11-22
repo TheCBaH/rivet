@@ -2,8 +2,8 @@
  (files ../../../targets/riscv32/*.ml))
 
 (library
- (name riscv32_encode)
- (modules riscv32_encode)
+ (name rivet_riscv32_encode)
+ (modules rivet_riscv32_encode)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -11,13 +11,13 @@
   rivet_asm_core
   rivet_target_error
   rivet_target_encode
-  riscv_family_encode)
+  rivet_riscv_family_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name riscv32)
- (modules riscv32)
+ (name rivet_riscv32)
+ (modules rivet_riscv32)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -25,7 +25,7 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  riscv_family
-  riscv32_encode)
+  rivet_riscv_family
+  rivet_riscv32_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

@@ -1,8 +1,8 @@
 (* [Instruction.mk] values against their text on all six targets. *)
 
 open Harness
-module Rv32 = Make (Riscv32_encode)
-module Rv64 = Make (Riscv64_encode)
+module Rv32 = Make (Rivet_riscv32_encode)
+module Rv64 = Make (Rivet_riscv64_encode)
 module X32 = Make (X86_32_encode)
 module X64 = Make (X86_64_encode)
 module Arm = Make (Rivet_arm_encode)
@@ -11,7 +11,7 @@ module A64 = Make (Rivet_aarch64_encode)
 let int n = Rivet_foundation.Bigint.of_int n
 
 let%expect_test "Instruction.mk values encode like their text" =
-  (let module E = Riscv32_encode in
+  (let module E = Rivet_riscv32_encode in
   let x n = E.Operand.Reg (E.Reg.x n) in
   let mem n base =
     E.Operand.Mem { E.Mem.offset = Rivet_asm_core.Expr.Const (int n); base = E.Reg.x base }
@@ -21,7 +21,7 @@ let%expect_test "Instruction.mk values encode like their text" =
   Rv32.check
     (E.Instruction.mk E.Opcode.Addi [ x 5; x 6; E.Operand.Imm (int (-3)) ])
     "addi t0, t1, -3");
-  (let module E = Riscv64_encode in
+  (let module E = Rivet_riscv64_encode in
   let x n = E.Operand.Reg (E.Reg.x n) in
   Rv64.check (E.Instruction.mk E.Opcode.Addw [ x 1; x 2; x 3 ]) "addw x1, x2, x3");
   (let module E = X86_32_encode in

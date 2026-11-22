@@ -139,7 +139,7 @@ specification says; GNU as 2.43 does not check it.
 
 ## ISA strings
 
-`Riscv_family_encode.Riscv_isa` converts between configurations and ISA
+`Rivet_riscv_family_encode.Riscv_isa` converts between configurations and ISA
 strings. `of_march "rv32imf_zve32f_zvfbfwma"` gives the XLEN and a spec starting
 from `none`, with `system` and `s` on (GNU as takes their instructions under any
 `-march`). Versions are accepted and ignored, `g` expands to
@@ -173,7 +173,7 @@ classified in `Riscv_overlap` and a test fails on an unclassified pair:
 
 `Extensions.make ~xlen definition` composes a vendor's components and rows with
 the standard ones and validates the result once; it reports every problem it
-finds. `Riscv_family.Make_with (Profile) (E)` and `Riscv_family_encode.Make_with`
+finds. `Rivet_riscv_family.Make_with (Profile) (E)` and `Rivet_riscv_family_encode.Make_with`
 then build a front end and an encoder from the validated composition, and `Make`
 is `Make_with` over the standard extensions. Applying a composition validated for
 a different XLEN raises `Invalid_argument`. Nothing is registered globally: a

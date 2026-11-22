@@ -9,7 +9,7 @@ let print instruction type_char =
 let () =
   print X86_64_encode.Instruction.pp_gnu '@';
   print Rivet_aarch64_encode.Instruction.pp_gnu '%';
-  print Riscv32_encode.Instruction.pp_gnu '@';
+  print Rivet_riscv32_encode.Instruction.pp_gnu '@';
   List.iter
     (fun t ->
       match Rivet_driver.Portable.disassemble_records_for t ~address:0L "\x13\x05\x15\x00" with

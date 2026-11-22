@@ -15,8 +15,8 @@
   x86_64
   rivet_arm
   rivet_aarch64
-  riscv32
-  riscv64
+  rivet_riscv32
+  rivet_riscv64
   rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

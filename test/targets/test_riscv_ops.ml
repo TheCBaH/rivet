@@ -2,9 +2,9 @@
    encoding fields, XLEN, class, components, rounding default and the operand lists lowering
    takes. *)
 
-module Ops = Riscv_family_encode.Riscv_ops
+module Ops = Rivet_riscv_family_encode.Riscv_ops
 
-module type ENC = module type of Riscv64_encode
+module type ENC = module type of Rivet_riscv64_encode
 
 module Check (E : ENC) = struct
   let state = { E.default_state with E.rvc = true }
@@ -169,8 +169,8 @@ module Check (E : ENC) = struct
 end
 
 let%expect_test "Riscv_ops agrees with the encoder" =
-  let module C32 = Check (Riscv32_encode) in
-  let module C64 = Check (Riscv64_encode) in
+  let module C32 = Check (Rivet_riscv32_encode) in
+  let module C64 = Check (Rivet_riscv64_encode) in
   Printf.printf "entries %d\nriscv32 [%s]\nriscv64 [%s]\n" (Array.length Ops.all)
     (String.concat " " (C32.disagreements ()))
     (String.concat " " (C64.disagreements ()));

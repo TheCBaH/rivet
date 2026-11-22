@@ -12,7 +12,9 @@ let%expect_test "every RV32 corpus case reads back from its GNU print" =
   List.iter
     (fun (c : C.case) ->
       let outcome =
-        match C.print ?features:c.features ~instruction:Riscv32.Instruction.pp_gnu c.source with
+        match
+          C.print ?features:c.features ~instruction:Rivet_riscv32.Instruction.pp_gnu c.source
+        with
         | Error m -> Some ("print: " ^ m)
         | Ok text -> (
             match C.assemble ?features:c.features riscv32 text with
@@ -31,8 +33,8 @@ let%expect_test "every RV32 corpus case reads back from its GNU print" =
 
 (* A vendor composition's table row prints the same way: GNU as knows no such row, so its print
    is checked against Rivet alone. *)
-module Ext = Riscv_family_encode.Extensions
-module Row = Riscv_family_encode.Riscv_table_row
+module Ext = Rivet_riscv_family_encode.Extensions
+module Row = Rivet_riscv_family_encode.Riscv_table_row
 
 let vendor : Ext.Validated.t =
   let gpr lsb = Row.Gpr { lsb; nonzero = false } in
@@ -74,8 +76,8 @@ let vendor : Ext.Validated.t =
   | Error ps -> failwith (String.concat "; " ps)
 
 module V =
-  Riscv_family.Make_with
-    (Riscv32_encode.Profile)
+  Rivet_riscv_family.Make_with
+    (Rivet_riscv32_encode.Profile)
     (struct
       let definition = vendor
     end)

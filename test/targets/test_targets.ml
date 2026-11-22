@@ -58,7 +58,7 @@ let%expect_test "every target's codec passes Codec.check" =
     |}]
 
 let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
-  let open Riscv32_encode in
+  let open Rivet_riscv32_encode in
   let zero = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero in
   let values =
     [
@@ -359,14 +359,22 @@ let show_fixup label result =
   match result with
   | Ok value -> Printf.printf "%-18s %Ld\n" label value
   | Error error ->
-      let diagnostic = Riscv32_encode.error_diagnostic (Err.Error.kind error) in
+      let diagnostic = Rivet_riscv32_encode.error_diagnostic (Err.Error.kind error) in
       Printf.printf "%-18s %s\n" label (Rivet_foundation.Diagnostic.message diagnostic)
 
 let%expect_test "RISC-V branch, jump, and rounded split boundaries are exact" =
-  let branch target = Riscv32_encode.evaluate_fixup Riscv32_encode.Branch13 ~place:0L ~target in
-  let jump target = Riscv32_encode.evaluate_fixup Riscv32_encode.Jal21 ~place:0L ~target in
-  let hi target = Riscv32_encode.evaluate_fixup Riscv32_encode.Pcrel_hi20 ~place:0L ~target in
-  let lo target = Riscv32_encode.evaluate_fixup Riscv32_encode.Pcrel_lo12_i ~place:0L ~target in
+  let branch target =
+    Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Branch13 ~place:0L ~target
+  in
+  let jump target =
+    Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Jal21 ~place:0L ~target
+  in
+  let hi target =
+    Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Pcrel_hi20 ~place:0L ~target
+  in
+  let lo target =
+    Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Pcrel_lo12_i ~place:0L ~target
+  in
   List.iter
     (fun (label, value) -> show_fixup label (branch value))
     [ ("b min", -4096L); ("b below", -4098L); ("b max", 4094L); ("b above", 4096L) ];
@@ -385,11 +393,13 @@ let%expect_test "RISC-V branch, jump, and rounded split boundaries are exact" =
   show_fixup "auipc max" (hi 0x7fffffffL);
   show_fixup "auipc overflow" (hi 0x80000000L);
   show_fixup "rv32 max hi"
-    (Riscv32_encode.evaluate_fixup Riscv32_encode.Abs_hi20 ~place:0L ~target:0xffffffffL);
+    (Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Abs_hi20 ~place:0L ~target:0xffffffffL);
   show_fixup "rv32 max lo"
-    (Riscv32_encode.evaluate_fixup Riscv32_encode.Abs_lo12_i ~place:0L ~target:0xffffffffL);
+    (Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Abs_lo12_i ~place:0L
+       ~target:0xffffffffL);
   show_fixup "rv32 overflow"
-    (Riscv32_encode.evaluate_fixup Riscv32_encode.Abs_hi20 ~place:0L ~target:0x100000000L);
+    (Rivet_riscv32_encode.evaluate_fixup Rivet_riscv32_encode.Abs_hi20 ~place:0L
+       ~target:0x100000000L);
   [%expect
     {|
     b min              -4096
@@ -1050,8 +1060,8 @@ let%expect_test "riscv32: a call and an address taken of externs bind to their i
            ~source:
              (source "\t.text\n\t.globl entry\nentry:\n\tcall helper\n\tla a0, table\n\tret\n"))
     in
-    let* norm, _ = stage (P.simplify ~state:Riscv32_encode.default_state src) in
-    let* low = stage (P.lower ~state:Riscv32_encode.default_state norm) in
+    let* norm, _ = stage (P.simplify ~state:Rivet_riscv32_encode.default_state src) in
+    let* low = stage (P.lower ~state:Rivet_riscv32_encode.default_state norm) in
     stage (P.plan ~entry:"entry" ~externs:[ "helper"; "table"; "unused" ] low)
   in
   match laid with

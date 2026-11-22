@@ -1,10 +1,10 @@
 open Rivet_foundation
 
-module type PROFILE = Riscv_family_encode.PROFILE
-module type EXTENSIONS = Riscv_family_encode.EXTENSIONS
+module type PROFILE = Rivet_riscv_family_encode.PROFILE
+module type EXTENSIONS = Rivet_riscv_family_encode.EXTENSIONS
 
 module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
-  include Riscv_family_encode.Make_with (P) (E)
+  include Rivet_riscv_family_encode.Make_with (P) (E)
 
   type parse_error_kind =
     [ `Unknown_register of string
@@ -249,4 +249,4 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       | None, o -> Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_option o))
 end
 
-module Make (P : PROFILE) = Make_with (P) (Riscv_family_encode.Standard (P))
+module Make (P : PROFILE) = Make_with (P) (Rivet_riscv_family_encode.Standard (P))

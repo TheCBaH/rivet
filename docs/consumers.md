@@ -30,13 +30,13 @@ named by string.
 ## A vendor extension
 
 A RISC-V extension defined outside Rivet (rows and components, validated by
-`Riscv_family_encode.Extensions.make`) gets the whole driver, both
+`Rivet_riscv_family_encode.Extensions.make`) gets the whole driver, both
 disassemblies included, by applying the functors:
 
 ```ocaml
 module C =
-  Riscv_family.Make_with
-    (Riscv32_encode.Profile)
+  Rivet_riscv_family.Make_with
+    (Rivet_riscv32_encode.Profile)
     (struct
       let definition = validated
     end)

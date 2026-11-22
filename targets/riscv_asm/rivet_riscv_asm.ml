@@ -5,7 +5,7 @@
    returns the {!Riscv_types.Instruction.t} the encoders lower; lowering still checks ranges and
    enabled extensions. *)
 
-open Riscv_family_encode
+open Rivet_riscv_family_encode
 open Riscv_types
 
 module Common = struct

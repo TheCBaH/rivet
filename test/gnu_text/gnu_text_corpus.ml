@@ -3,7 +3,7 @@
    [Instruction.pp_gnu], and the printed text is what both assemblers are asked to read back. The
    reference bytes are the ones GNU as produced for the case's original text. *)
 
-module P = Rivet_text_pipeline.Pipeline.Make (Riscv32)
+module P = Rivet_text_pipeline.Pipeline.Make (Rivet_riscv32)
 
 type case = {
   id : string;

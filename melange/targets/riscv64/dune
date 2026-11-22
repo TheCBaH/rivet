@@ -2,8 +2,8 @@
  (files ../../../targets/riscv64/*.ml))
 
 (library
- (name riscv64_encode)
- (modules riscv64_encode)
+ (name rivet_riscv64_encode)
+ (modules rivet_riscv64_encode)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -11,13 +11,13 @@
   rivet_asm_core
   rivet_target_error
   rivet_target_encode
-  riscv_family_encode)
+  rivet_riscv_family_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name riscv64)
- (modules riscv64)
+ (name rivet_riscv64)
+ (modules rivet_riscv64)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -25,7 +25,7 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  riscv_family
-  riscv64_encode)
+  rivet_riscv_family
+  rivet_riscv64_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

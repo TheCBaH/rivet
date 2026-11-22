@@ -21,8 +21,8 @@ module X86_32 = Rivet_text_pipeline.Pipeline.Make (X86_32)
 module X86_64 = Rivet_text_pipeline.Pipeline.Make (X86_64)
 module Arm = Rivet_text_pipeline.Pipeline.Make (Rivet_arm)
 module Aarch64 = Rivet_text_pipeline.Pipeline.Make (Rivet_aarch64)
-module Riscv32 = Rivet_text_pipeline.Pipeline.Make (Riscv32)
-module Riscv64 = Rivet_text_pipeline.Pipeline.Make (Riscv64)
+module Riscv32 = Rivet_text_pipeline.Pipeline.Make (Rivet_riscv32)
+module Riscv64 = Rivet_text_pipeline.Pipeline.Make (Rivet_riscv64)
 
 type driver = (module T_intf.DRIVER)
 

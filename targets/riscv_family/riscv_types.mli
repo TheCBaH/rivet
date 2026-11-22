@@ -1,4 +1,4 @@
-(* RISC-V types shared by every instance of {!Riscv_family_encode.Make_with}: riscv32, riscv64
+(* RISC-V types shared by every instance of {!Rivet_riscv_family_encode.Make_with}: riscv32, riscv64
    and vendor compositions agree on registers, operands and opcodes. *)
 
 module type INDEX = sig

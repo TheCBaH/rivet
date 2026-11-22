@@ -417,7 +417,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
 
 let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowered one at encoding"
     =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let config text =
     match Rivet_target_features.Config.resolve E.components (spec text) with
     | Ok c -> c
@@ -465,7 +465,7 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
     zmmul off: encode_in -> refused: mul requires feature zmmul, which is not enabled |}]
 
 let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
-  let module E = Riscv32_encode in
+  let module E = Rivet_riscv32_encode in
   let module P = Rivet_driver_direct.Pipeline_direct.Make (E) in
   let open Rivet_asm_core in
   let config =
@@ -634,7 +634,7 @@ let%expect_test "decode: canonical disassembly is strict and still re-assembles"
 (* {1 Scope, isolation and layout} *)
 
 let%expect_test "RISC-V .option push/pop restores the configuration" =
-  let module F = Riscv64 in
+  let module F = Rivet_riscv64 in
   let config =
     match Rivet_target_features.Config.resolve F.components (spec "none,+zmmul") with
     | Ok c -> c
@@ -784,7 +784,7 @@ let%expect_test "RISC-V .option arch cannot enable past the maximum configuratio
 
 (* A producer that hands lowering a module directly is held to the same maximum. *)
 let%expect_test "lowering refuses an initial state past the maximum configuration" =
-  let module P = Rivet_text_pipeline.Pipeline.Make (Riscv32) in
+  let module P = Rivet_text_pipeline.Pipeline.Make (Rivet_riscv32) in
   let ceiling = Result.get_ok (P.configure (spec "none,+m,+f")) in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:{|
       .text
@@ -792,7 +792,7 @@ let%expect_test "lowering refuses an initial state past the maximum configuratio
 |} in
   let m =
     match P.parse ~unit_name:"t" ~source with
-    | Ok m -> fst (Result.get_ok (P.simplify ~state:Riscv32.default_state m))
+    | Ok m -> fst (Result.get_ok (P.simplify ~state:Rivet_riscv32.default_state m))
     | Error ds -> failwith (render ds)
   in
   List.iter
@@ -801,7 +801,7 @@ let%expect_test "lowering refuses an initial state past the maximum configuratio
         (match P.lower ~ceiling ~state m with
         | Ok _ -> "accepted"
         | Error ds -> "REFUSED " ^ render ds))
-    [ ("default", Riscv32.default_state); ("ceiling", Riscv32.initial_state ceiling) ];
+    [ ("default", Rivet_riscv32.default_state); ("ceiling", Rivet_riscv32.initial_state ceiling) ];
   [%expect
     {|
     default  REFUSED config.ceiling: enables a, c, d, h, q, s, sdext, ssctr and 53 more, beyond the maximum feature configuration
@@ -902,8 +902,8 @@ let%expect_test "a disabled specialization falls back to the enabled general for
   let bytes = "\xbb\x00\x01\x08" in
   let decode legal =
     match
-      Riscv64_encode.decode_where ~legal
-        { state = Riscv64_encode.default_state; address = 0L }
+      Rivet_riscv64_encode.decode_where ~legal
+        { state = Rivet_riscv64_encode.default_state; address = 0L }
         bytes ~pos:0
     with
     | Ok (_, name, n) -> Printf.sprintf "%s (%d bytes)" name n
@@ -913,10 +913,10 @@ let%expect_test "a disabled specialization falls back to the enabled general for
     (fun (label, legal) -> Printf.printf "%s: %s\n" label (decode legal))
     [
       ("all legal", fun _ -> true);
-      ("no zext.w", fun op -> Riscv64_encode.Opcode.name op <> "zext.w");
+      ("no zext.w", fun op -> Rivet_riscv64_encode.Opcode.name op <> "zext.w");
       ( "neither",
         fun op ->
-          let m = Riscv64_encode.Opcode.name op in
+          let m = Rivet_riscv64_encode.Opcode.name op in
           m <> "zext.w" && m <> "add.uw" );
     ];
   [%expect
@@ -971,7 +971,7 @@ let%expect_test "F and D: text path, both XLENs" =
     riscv64  [none,+d  ] add x5, x6, x7         b3 02 73 00 |}]
 
 let%expect_test "F and D: lowered and decoded forms" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let config text =
     match Rivet_target_features.Config.resolve E.components (spec text) with
     | Ok c -> c
@@ -1160,7 +1160,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
 let%expect_test "Zfh implies Zfhmin" =
   List.iter
     (fun text ->
-      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      match Rivet_target_features.Config.resolve Rivet_riscv64_encode.components (spec text) with
       | Ok c ->
           Printf.printf "%-18S -> %s\n" text
             (String.concat "," (Rivet_target_features.Config.features c))
@@ -1279,7 +1279,7 @@ let%expect_test "Zbb, Zbkb, Zk: shared forms accept any providing extension" =
 let%expect_test "K groups are sums of their leaf extensions" =
   List.iter
     (fun text ->
-      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      match Rivet_target_features.Config.resolve Rivet_riscv64_encode.components (spec text) with
       | Ok c ->
           Printf.printf "%-14S -> %s\n" text
             (String.concat "," (Rivet_target_features.Config.features c))
@@ -1385,7 +1385,7 @@ let%expect_test "Zicsr, system and cache-management forms are gated" =
 let%expect_test "F requires Zicsr" =
   List.iter
     (fun text ->
-      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      match Rivet_target_features.Config.resolve Rivet_riscv64_encode.components (spec text) with
       | Ok c ->
           Printf.printf "%-22S -> %s\n" text
             (String.concat "," (Rivet_target_features.Config.features c))
@@ -1454,7 +1454,7 @@ let%expect_test "V and its crypto subsets" =
 let%expect_test "vector configurations" =
   List.iter
     (fun text ->
-      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      match Rivet_target_features.Config.resolve Rivet_riscv64_encode.components (spec text) with
       | Ok c ->
           Printf.printf "%-22S -> %s\n" text
             (String.concat "," (Rivet_target_features.Config.features c))
@@ -1566,7 +1566,7 @@ let%expect_test "Zvfbfwma brings in the BF16 vector conversions" =
 (* {1 Every lowered form is gated} *)
 
 let%expect_test "RISC-V: lowered forms of each shape are refused when their extension is off" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let config text =
     match Rivet_target_features.Config.resolve E.components (spec text) with
     | Ok c -> c
@@ -1696,7 +1696,9 @@ let%expect_test "the compressed groups on each XLEN" =
   List.iter
     (fun target ->
       let components =
-        match target with "riscv32" -> Riscv32_encode.components | _ -> Riscv64_encode.components
+        match target with
+        | "riscv32" -> Rivet_riscv32_encode.components
+        | _ -> Rivet_riscv64_encode.components
       in
       List.iter
         (fun text ->
@@ -1763,7 +1765,7 @@ let%expect_test "inspection lists every reading of a word the configuration refu
 (* {1 Configured codec} *)
 
 let%expect_test "codec_in follows the configuration; the default codec leaves opt-ins out" =
-  let module E = Riscv64_encode in
+  let module E = Rivet_riscv64_encode in
   let config text =
     match Rivet_target_features.Config.resolve E.components (spec text) with
     | Ok c -> c
@@ -1807,7 +1809,7 @@ let%expect_test "codec_in follows the configuration; the default codec leaves op
 
 (* {1 ISA strings} *)
 
-module Riscv_isa = Riscv_family_encode.Riscv_isa
+module Riscv_isa = Rivet_riscv_family_encode.Riscv_isa
 
 (* LLVM 19.1.7's Tag_RISCV_arch for each -march ([clang -S]'s [.attribute 5]). The closures
    differ: Rivet's C brings in zca (and zcf, zcd) and Zvknhb implies Zvknha, while LLVM adds zkr
@@ -1867,7 +1869,7 @@ let%expect_test "ISA strings: -march in, Tag_RISCV_arch out, against LLVM 19" =
         | Error m -> "error: " ^ m
         | Ok { xlen; spec; vlen } -> (
             let components =
-              if xlen = 32 then Riscv32_encode.components else Riscv64_encode.components
+              if xlen = 32 then Rivet_riscv32_encode.components else Rivet_riscv64_encode.components
             in
             match Rivet_target_features.Config.resolve components spec with
             | Error m -> "error: " ^ m
@@ -1938,7 +1940,7 @@ let%expect_test "ISA strings: the 2.2 edition and malformed input" =
         (match Riscv_isa.of_march ~isa_spec:`V2_2 march with
         | Error m -> "error: " ^ m
         | Ok { xlen; spec; vlen } -> (
-            match Rivet_target_features.Config.resolve Riscv32_encode.components spec with
+            match Rivet_target_features.Config.resolve Rivet_riscv32_encode.components spec with
             | Error m -> "error: " ^ m
             | Ok c -> (
                 match Riscv_isa.to_string ~isa_spec:`V2_2 ?vlen ~xlen c with
@@ -1978,7 +1980,7 @@ let%expect_test "ISA strings: every standard feature has a version" =
         (match Riscv_isa.to_string ~xlen (Rivet_target_features.Config.all_enabled components) with
         | Ok _ -> Printf.sprintf "rv%d: ok" xlen
         | Error m -> m))
-    [ (32, Riscv32_encode.components); (64, Riscv64_encode.components) ];
+    [ (32, Rivet_riscv32_encode.components); (64, Rivet_riscv64_encode.components) ];
   [%expect {|
     rv32: ok
     rv64: ok |}]

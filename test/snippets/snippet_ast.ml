@@ -422,7 +422,7 @@ end
    instantiated twice while the semantic shape stays visibly identical. *)
 
 module Riscv32_corpus = struct
-  module T = Riscv32_encode
+  module T = Rivet_riscv32_encode
   module A = Make (T)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
@@ -501,7 +501,7 @@ module Riscv32_corpus = struct
 end
 
 module Riscv64_corpus = struct
-  module T = Riscv64_encode
+  module T = Rivet_riscv64_encode
   module A = Make (T)
 
   let r n = reg_exn ~target:T.name T.Reg.find n

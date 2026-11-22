@@ -48,8 +48,8 @@
   x86_64_encode
   rivet_arm_encode
   rivet_aarch64_encode
-  riscv32_encode
-  riscv64_encode
+  rivet_riscv32_encode
+  rivet_riscv64_encode
   rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

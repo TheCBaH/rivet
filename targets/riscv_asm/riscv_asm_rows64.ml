@@ -3,8 +3,8 @@
 
 [@@@ocaml.warning "-32"]
 
-open Riscv_asm.Rowkit
-module R = Riscv_family_encode.Riscv_std_rows64
+open Rivet_riscv_asm.Rowkit
+module R = Rivet_riscv_family_encode.Riscv_std_rows64
 
 let sret = mk R.sret []
 let dret = mk R.dret []

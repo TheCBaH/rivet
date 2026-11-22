@@ -152,7 +152,7 @@ let%expect_test "with Zicsr disabled the word is refused, not printed" =
     none,+m      REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled |}]
 
 let%expect_test "CSR names: each assembles to its number and decodes back to its name" =
-  let module Csr = Riscv_family_encode.Riscv_csr in
+  let module Csr = Rivet_riscv_family_encode.Riscv_csr in
   let bad = ref 0 in
   List.iter
     (fun (name, n) ->

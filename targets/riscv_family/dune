@@ -1,8 +1,8 @@
 (library
- (name riscv_family_encode)
+ (name rivet_riscv_family_encode)
  (public_name rivet.riscv_family_encode)
  (modules
-  riscv_family_encode
+  rivet_riscv_family_encode
   riscv_types
   riscv_ops
   riscv_cls
@@ -37,9 +37,9 @@
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name riscv_family)
+ (name rivet_riscv_family)
  (public_name rivet.riscv_family)
- (modules riscv_family)
+ (modules rivet_riscv_family)
  (modes byte native)
  (libraries
   rivet_foundation
@@ -47,6 +47,6 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  riscv_family_encode)
+  rivet_riscv_family_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

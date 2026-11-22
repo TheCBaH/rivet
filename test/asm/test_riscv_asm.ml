@@ -2,9 +2,9 @@
    as text that assembles to them again. [la] differs by design: without PIC it loads the target's
    absolute address, which the unbound encoding leaves zero and the text's bound image fills in. *)
 
-module Ops = Riscv_family_encode.Riscv_ops
+module Ops = Rivet_riscv_family_encode.Riscv_ops
 
-module type ENC = module type of Riscv64_encode
+module type ENC = module type of Rivet_riscv64_encode
 
 (* Every component a hand-written opcode needs. *)
 let features =
@@ -24,7 +24,7 @@ let text (e : Ops.entry) imm =
     | Rm -> "rtz"
   in
   let ops = List.mapi operand e.shape in
-  let m = Riscv_family_encode.Riscv_types.Opcode.mnemonic e.op in
+  let m = Rivet_riscv_family_encode.Riscv_types.Opcode.mnemonic e.op in
   ".option rvc\nl:\n\t" ^ if ops = [] then m else m ^ " " ^ String.concat ", " ops
 
 module Check (E : ENC) = struct
@@ -100,8 +100,8 @@ module Check (E : ENC) = struct
 end
 
 let%expect_test "every builder's sample encodes like its text and round-trips" =
-  let module C32 = Check (Riscv32_encode) in
-  let module C64 = Check (Riscv64_encode) in
+  let module C32 = Check (Rivet_riscv32_encode) in
+  let module C64 = Check (Rivet_riscv64_encode) in
   C32.report "riscv32";
   C64.report "riscv64";
   [%expect
@@ -120,8 +120,8 @@ let%expect_test "every builder's sample encodes like its text and round-trips" =
       not round trip [] |}]
 
 let%expect_test "builders read like the text" =
-  let module H = Harness.Make (Riscv32_encode) in
-  let open Riscv_asm.Rv32 in
+  let module H = Harness.Make (Rivet_riscv32_encode) in
+  let open Rivet_riscv_asm.Rv32 in
   List.iter
     (fun (i, t) -> H.check i t)
     [
@@ -142,9 +142,9 @@ let%expect_test "builders read like the text" =
     riscv32  sw a1, -4(s0)                23 2e b4 fe              same |}]
 
 let%expect_test "the RV32 library: hand-written and row builders read like the text" =
-  let module H = Harness.Make (Riscv32_encode) in
+  let module H = Harness.Make (Rivet_riscv32_encode) in
   let features = "+v,+zfa,+zcb" in
-  let open Riscv32_asm in
+  let open Rivet_riscv32_asm in
   List.iter
     (fun (i, t) -> H.check ~features i t)
     [
@@ -160,14 +160,14 @@ let%expect_test "the RV32 library: hand-written and row builders read like the t
     let state =
       let spec = Result.get_ok (Rivet_target_features.Config.parse_spec features) in
       let config =
-        Result.get_ok (Rivet_target_features.Config.resolve Riscv32_encode.components spec)
+        Result.get_ok (Rivet_target_features.Config.resolve Rivet_riscv32_encode.components spec)
       in
-      { (Riscv32_encode.initial_state config) with rvc = true }
+      { (Rivet_riscv32_encode.initial_state config) with rvc = true }
     in
     let bytes =
-      match Riscv32_encode.lower_instruction state insn with
+      match Rivet_riscv32_encode.lower_instruction state insn with
       | Ok [ l ] -> (
-          match Riscv32_encode.encode_in state l with
+          match Rivet_riscv32_encode.encode_in state l with
           | Ok (`Fixed f) -> Ok f.Rivet_asm_core.Lowered_ast.bytes
           | _ -> Error "encode")
       | _ -> Error "lower"
@@ -193,8 +193,8 @@ let%expect_test "the RV32 library: hand-written and row builders read like the t
     riscv32  cm.push {ra, s0}, -16        52 b8 same |}]
 
 let%expect_test "the RV64 library has the RV64 rows" =
-  let module H = Harness.Make (Riscv64_encode) in
-  let open Riscv64_asm in
+  let module H = Harness.Make (Rivet_riscv64_encode) in
+  let open Rivet_riscv64_asm in
   List.iter
     (fun (i, t) -> H.check ~features:"+zacas" i t)
     [ (ld a0 (off sp 8), "ld a0, 8(sp)"); (amocas_q a0 a2 (off a1 0), "amocas.q a0, a2, (a1)") ];

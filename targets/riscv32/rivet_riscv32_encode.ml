@@ -4,4 +4,4 @@ module Profile = struct
   let xlen = 32
 end
 
-include Riscv_family_encode.Make (Profile)
+include Rivet_riscv_family_encode.Make (Profile)

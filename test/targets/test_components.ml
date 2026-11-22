@@ -250,8 +250,8 @@ let%expect_test "component descriptors are structurally clean in every profile" 
             components));
     List.iter (Printf.printf "  problem: %s\n") (Rivet_target_features.Component.check components)
   in
-  report "riscv32" Riscv32_encode.components;
-  report "riscv64" Riscv64_encode.components;
+  report "riscv32" Rivet_riscv32_encode.components;
+  report "riscv64" Rivet_riscv64_encode.components;
   report "x86_32" X86_32_encode.components;
   report "x86_64" X86_64_encode.components;
   [%expect
@@ -358,7 +358,7 @@ let%expect_test "M descriptors predict the assembled instruction word" =
   List.iter
     (fun (target, xlen) ->
       List.iter
-        (fun (f : Riscv_family_encode.Riscv_ext_m.form) ->
+        (fun (f : Rivet_riscv_family_encode.Riscv_ext_m.form) ->
           if xlen = 64 || not f.rv64_only then
             let predicted =
               f.opcode lor (5 lsl 7) lor (f.funct3 lsl 12) lor (6 lsl 15) lor (7 lsl 20)
@@ -372,7 +372,7 @@ let%expect_test "M descriptors predict the assembled instruction word" =
             Printf.printf "%s %s: %s\n" target f.mnemonic
               (if bytes = predicted then "matches"
                else Printf.sprintf "%08x <> %08x" bytes predicted))
-        Riscv_family_encode.Riscv_ext_m.forms)
+        Rivet_riscv_family_encode.Riscv_ext_m.forms)
     [ ("riscv32", 32); ("riscv64", 64) ];
   [%expect
     {|
@@ -430,8 +430,8 @@ let%expect_test "RISC-V fence spellings match GNU as" =
    are listed. *)
 let%expect_test
     "generated RISC-V table rows neither collide with nor are shadowed by hand-written forms" =
-  let module Rows = Riscv_family_encode.Riscv_table_rows in
-  let module Row = Riscv_family_encode.Riscv_table_row in
+  let module Rows = Rivet_riscv_family_encode.Riscv_table_rows in
+  let module Row = Rivet_riscv_family_encode.Riscv_table_row in
   (* the instruction bit holding a scattered immediate's lowest value bit: a
      valid, aligned, non-zero value *)
   let lowest (sc : Row.scatter) =
@@ -507,26 +507,30 @@ let%expect_test
       (String.concat " " (List.rev !hints))
       (String.concat " " (List.rev !aliases))
   in
-  check "riscv32" 32 Riscv32_encode.Opcode.of_mnemonic
-    (function Riscv32_encode.Opcode.Table r -> Some (Riscv32_encode.Row.index r) | _ -> None)
+  check "riscv32" 32 Rivet_riscv32_encode.Opcode.of_mnemonic
+    (function
+      | Rivet_riscv32_encode.Opcode.Table r -> Some (Rivet_riscv32_encode.Row.index r) | _ -> None)
     (fun bytes ->
       match
-        Riscv32_encode.decode_ungated
-          { state = Riscv32_encode.default_state; address = 0L }
+        Rivet_riscv32_encode.decode_ungated
+          { state = Rivet_riscv32_encode.default_state; address = 0L }
           bytes ~pos:0
       with
-      | Ok ({ op = Riscv32_encode.Opcode.Table r; _ }, _, _) -> `Row (Riscv32_encode.Row.index r)
+      | Ok ({ op = Rivet_riscv32_encode.Opcode.Table r; _ }, _, _) ->
+          `Row (Rivet_riscv32_encode.Row.index r)
       | Ok _ -> `Hand_written
       | Error _ -> `Nothing);
-  check "riscv64" 64 Riscv64_encode.Opcode.of_mnemonic
-    (function Riscv64_encode.Opcode.Table r -> Some (Riscv64_encode.Row.index r) | _ -> None)
+  check "riscv64" 64 Rivet_riscv64_encode.Opcode.of_mnemonic
+    (function
+      | Rivet_riscv64_encode.Opcode.Table r -> Some (Rivet_riscv64_encode.Row.index r) | _ -> None)
     (fun bytes ->
       match
-        Riscv64_encode.decode_ungated
-          { state = Riscv64_encode.default_state; address = 0L }
+        Rivet_riscv64_encode.decode_ungated
+          { state = Rivet_riscv64_encode.default_state; address = 0L }
           bytes ~pos:0
       with
-      | Ok ({ op = Riscv64_encode.Opcode.Table r; _ }, _, _) -> `Row (Riscv64_encode.Row.index r)
+      | Ok ({ op = Rivet_riscv64_encode.Opcode.Table r; _ }, _, _) ->
+          `Row (Rivet_riscv64_encode.Row.index r)
       | Ok _ -> `Hand_written
       | Error _ -> `Nothing);
   [%expect
@@ -656,10 +660,10 @@ let%expect_test "RISC-V mnemonics without an owning component" =
     let unowned =
       unowned
       @ List.filter_map
-          (fun (r : Riscv_family_encode.Riscv_table_row.row) ->
+          (fun (r : Rivet_riscv_family_encode.Riscv_table_row.row) ->
             if Rivet_target_features.Component.legal components r.mnemonic <> None then None
             else Some r.mnemonic)
-          (Array.to_list Riscv_family_encode.Riscv_table_rows.rows)
+          (Array.to_list Rivet_riscv_family_encode.Riscv_table_rows.rows)
     in
     let vector, rest = List.partition (fun n -> String.length n > 0 && n.[0] = 'v') unowned in
     let compressed, base =
@@ -670,11 +674,11 @@ let%expect_test "RISC-V mnemonics without an owning component" =
   in
   let names (type a) (all : a list) name = List.map name all in
   report "riscv32"
-    (names Riscv32_encode.Opcode.all Riscv32_encode.Opcode.name)
-    Riscv32_encode.components;
+    (names Rivet_riscv32_encode.Opcode.all Rivet_riscv32_encode.Opcode.name)
+    Rivet_riscv32_encode.components;
   report "riscv64"
-    (names Riscv64_encode.Opcode.all Riscv64_encode.Opcode.name)
-    Riscv64_encode.components;
+    (names Rivet_riscv64_encode.Opcode.all Rivet_riscv64_encode.Opcode.name)
+    Rivet_riscv64_encode.components;
   [%expect
     {|
     riscv32: 0 vector, 0 compressed unowned
@@ -686,9 +690,9 @@ let%expect_test "RISC-V mnemonics without an owning component" =
    policy, and a specialization must come first in table order, since that is the order rows are
    tried in. *)
 let%expect_test "generated RISC-V rows that overlap are all classified" =
-  let module Rows = Riscv_family_encode.Riscv_table_rows in
-  let module Row = Riscv_family_encode.Riscv_table_row in
-  let module Policy = Riscv_family_encode.Riscv_overlap in
+  let module Rows = Rivet_riscv_family_encode.Riscv_table_rows in
+  let module Row = Rivet_riscv_family_encode.Riscv_table_row in
+  let module Policy = Rivet_riscv_family_encode.Riscv_overlap in
   let rows = Rows.rows in
   let counts = Hashtbl.create 4 in
   let problems = ref [] in
@@ -738,7 +742,7 @@ let%expect_test "generated RISC-V rows that overlap are all classified" =
    spelling a component lists names exactly one opcode or a table row, each opcode's typed
    requirement is what the component list gives its spelling, and the opcodes with no requirement
    are the base ISA's. *)
-module Agree (E : module type of Riscv64_encode) = struct
+module Agree (E : module type of Rivet_riscv64_encode) = struct
   let report () =
     let req r =
       Option.fold ~none:"-" ~some:(Fmt.str "%a" Rivet_target_features.Component.Req.pp) r
@@ -776,8 +780,8 @@ module Agree (E : module type of Riscv64_encode) = struct
 end
 
 let%expect_test "RISC-V components agree with the typed opcodes" =
-  let module A64 = Agree (Riscv64_encode) in
-  let module A32 = Agree (Riscv32_encode) in
+  let module A64 = Agree (Rivet_riscv64_encode) in
+  let module A32 = Agree (Rivet_riscv32_encode) in
   A32.report ();
   A64.report ();
   [%expect

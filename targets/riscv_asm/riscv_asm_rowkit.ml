@@ -3,7 +3,7 @@
    constant and a Zcmp register list as their spellings. Fixed registers and keywords are added
    by the builder. *)
 
-open Riscv_family_encode
+open Rivet_riscv_family_encode
 open Riscv_types
 
 let mk row ops = Instruction.mk (Opcode.Table row) (List.concat ops)

@@ -12,7 +12,7 @@
   rivet_image
   rivet_target_intf
   rivet_text_pipeline
-  riscv32)
+  rivet_riscv32)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -27,10 +27,10 @@
   rivet_target_intf
   rivet_target_features
   rivet_text_pipeline
-  riscv32
-  riscv32_encode
-  riscv_family
-  riscv_family_encode
+  rivet_riscv32
+  rivet_riscv32_encode
+  rivet_riscv_family
+  rivet_riscv_family_encode
   x86_64
   x86_32
   rivet_aarch64
@@ -46,6 +46,6 @@
  (name gnu_text_emit)
  (modules gnu_text_emit)
  (modes exe)
- (libraries gnu_text_corpus riscv32)
+ (libraries gnu_text_corpus rivet_riscv32)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

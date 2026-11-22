@@ -2,8 +2,8 @@
    [Extensions.make]; two compositions in one program do not see each other's mnemonics, and the
    standard registry is untouched. *)
 
-module Row = Riscv_family_encode.Riscv_table_row
-module Ext = Riscv_family_encode.Extensions
+module Row = Rivet_riscv_family_encode.Riscv_table_row
+module Ext = Rivet_riscv_family_encode.Extensions
 
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
@@ -116,14 +116,14 @@ let validated mnemonic funct3 =
   | Error ps -> failwith (String.concat "; " ps)
 
 module Foo =
-  Riscv_family.Make_with
+  Rivet_riscv_family.Make_with
     (P64)
     (struct
       let definition = validated "xfoo" 0
     end)
 
 module Bar =
-  Riscv_family.Make_with
+  Rivet_riscv_family.Make_with
     (P64)
     (struct
       let definition = validated "xbar" 1
@@ -131,14 +131,14 @@ module Bar =
 
 (* Every RISC-V instance, standard or vendor, shares the family's types: these only compile if the
    types are equal. *)
-module Types = Riscv_family_encode.Riscv_types
+module Types = Rivet_riscv_family_encode.Riscv_types
 
-let _ : Riscv32_encode.Opcode.t -> Riscv64_encode.Opcode.t = Fun.id
-let _ : Riscv64_encode.Opcode.t -> Foo.Opcode.t = Fun.id
+let _ : Rivet_riscv32_encode.Opcode.t -> Rivet_riscv64_encode.Opcode.t = Fun.id
+let _ : Rivet_riscv64_encode.Opcode.t -> Foo.Opcode.t = Fun.id
 let _ : Foo.Opcode.t -> Types.Opcode.t = Fun.id
-let _ : Riscv32_encode.Reg.t -> Foo.Reg.t = Fun.id
-let _ : Riscv32_encode.Operand.t -> Foo.Operand.t = Fun.id
-let _ : Types.Mem.t -> Riscv64_encode.Mem.t = Fun.id
+let _ : Rivet_riscv32_encode.Reg.t -> Foo.Reg.t = Fun.id
+let _ : Rivet_riscv32_encode.Operand.t -> Foo.Operand.t = Fun.id
+let _ : Types.Mem.t -> Rivet_riscv64_encode.Mem.t = Fun.id
 
 module Foo_driver = Rivet_text_pipeline.Pipeline.Make (Foo)
 module Bar_driver = Rivet_text_pipeline.Pipeline.Make (Bar)
@@ -280,7 +280,7 @@ let%expect_test "a composition validated for another XLEN is refused" =
   | Ok v -> (
       try
         let module _ =
-          Riscv_family_encode.Make_with
+          Rivet_riscv_family_encode.Make_with
             (P64)
             (struct
               let definition = v
@@ -329,7 +329,7 @@ let%expect_test "rows outside the custom opcodes must not overlap a standard for
     flw: row vtzero: the standard decoder reads 0x00002007 as flw |}]
 
 module Tile =
-  Riscv_family.Make_with
+  Rivet_riscv_family.Make_with
     (P64)
     (struct
       let definition =
@@ -443,7 +443,7 @@ let%expect_test "vendor rows in the SYSTEM space: accepted only where nothing st
     rd free            row xcsr: the standard decoder reads 0x34001073 as csrw (+0 more) |}]
 
 module Mpause =
-  Riscv_family.Make_with
+  Rivet_riscv_family.Make_with
     (P64)
     (struct
       let definition =
@@ -512,7 +512,7 @@ let%expect_test "a vendor row's id carries its row" =
   let show r =
     Printf.printf "%s feature=%s source=%s index>=standard:%b\n" (Foo.Row.mnemonic r)
       (Foo.Row.feature r) (Foo.Row.source r)
-      (Foo.Row.index r >= Array.length Riscv_family_encode.Riscv_table_rows.rows)
+      (Foo.Row.index r >= Array.length Rivet_riscv_family_encode.Riscv_table_rows.rows)
   in
   List.iter show (Foo.Row.of_mnemonic "xfoo");
   (match Foo.Opcode.of_mnemonic "xfoo" with
@@ -520,7 +520,7 @@ let%expect_test "a vendor row's id carries its row" =
       Printf.printf "of_mnemonic names it: %b\n"
         (List.exists (Foo.Row.equal r) (Foo.Row.of_mnemonic "xfoo"))
   | _ -> print_endline "not a row");
-  Printf.printf "standard instance has it: %b\n" (Riscv64_encode.Row.of_mnemonic "xfoo" <> []);
+  Printf.printf "standard instance has it: %b\n" (Rivet_riscv64_encode.Row.of_mnemonic "xfoo" <> []);
   [%expect
     {|
     xfoo feature=xfoo source=vendor/xfoo index>=standard:true
@@ -532,11 +532,13 @@ let%expect_test "a vendor row's class is read off its word" =
     (fun m ->
       List.iter
         (fun r ->
-          Printf.printf "%s %s\n" m (Riscv_family_encode.Riscv_types.Cls.name (Tile.Row.cls r)))
+          Printf.printf "%s %s\n" m
+            (Rivet_riscv_family_encode.Riscv_types.Cls.name (Tile.Row.cls r)))
         (Tile.Row.of_mnemonic m))
     [ "vtzero"; "vtle32"; "vtmms.tvv" ];
   List.iter
-    (fun r -> Printf.printf "xfoo %s\n" (Riscv_family_encode.Riscv_types.Cls.name (Foo.Row.cls r)))
+    (fun r ->
+      Printf.printf "xfoo %s\n" (Rivet_riscv_family_encode.Riscv_types.Cls.name (Foo.Row.cls r)))
     (Foo.Row.of_mnemonic "xfoo");
   [%expect {|
     vtzero vector

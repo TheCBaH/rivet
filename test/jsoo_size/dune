@@ -12,7 +12,7 @@
   rivet_target_intf
   x86_64_encode
   rivet_aarch64_encode
-  riscv32_encode)
+  rivet_riscv32_encode)
  (enabled_if
   (= %{env:RIVET_JSOO_SIZE=false} true)))
 
@@ -26,7 +26,7 @@
   rivet_target_encode
   x86_64
   rivet_aarch64
-  riscv32)
+  rivet_riscv32)
  (enabled_if
   (= %{env:RIVET_JSOO_SIZE=false} true)))
 
@@ -40,7 +40,7 @@
   rivet_target_encode
   x86_64_encode
   rivet_aarch64_encode
-  riscv32_encode)
+  rivet_riscv32_encode)
  (enabled_if
   (= %{env:RIVET_JSOO_SIZE=false} true)))
 
@@ -53,6 +53,6 @@
   rivet_driver_direct
   rivet_target_encode
   rivet_aarch64_encode
-  riscv32_encode)
+  rivet_riscv32_encode)
  (enabled_if
   (= %{env:RIVET_JSOO_SIZE=false} true)))

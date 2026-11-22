@@ -23,10 +23,10 @@
   rivet_target_intf
   rivet_target_encode
   rivet_target_features
-  riscv_family_encode
-  riscv_asm
-  riscv32_asm
-  riscv64_asm
+  rivet_riscv_family_encode
+  rivet_riscv_asm
+  rivet_riscv32_asm
+  rivet_riscv64_asm
   rivet_foundation
   rivet_arm_encode
   rivet_arm_asm
@@ -38,8 +38,8 @@
   x86_asm
   x86_32_asm
   x86_64_asm
-  riscv32_encode
-  riscv64_encode)
+  rivet_riscv32_encode
+  rivet_riscv64_encode)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

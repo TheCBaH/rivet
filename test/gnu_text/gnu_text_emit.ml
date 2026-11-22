@@ -12,7 +12,9 @@ let () =
       let n = ref 0 and refused = ref 0 in
       List.iter
         (fun (c : C.case) ->
-          match C.print ?features:c.features ~instruction:Riscv32.Instruction.pp_gnu c.source with
+          match
+            C.print ?features:c.features ~instruction:Rivet_riscv32.Instruction.pp_gnu c.source
+          with
           | Error m ->
               incr refused;
               Printf.eprintf "%s: %s\n" c.id m
