@@ -1,10 +1,10 @@
 (* Drift check between the native library stanzas and their Melange mirror under melange/.
 
    Run as `ocaml scripts/melange_mirror.ml <rivet-dir>` by melange-mirror-check.sh. It needs no
-   Melange: dune files are read as s-expressions and each library is reduced to its name and the
-   modules it contains. A library present in one tree and not the other, or with a different module
-   list, fails the check. Libraries and modules only; dependencies legitimately differ (for
-   example err_trace and its Melange build). *)
+   Melange: dune files are read as s-expressions and each library is reduced to its name, the
+   modules it contains, its [wrapped] field and its [private_modules]. A library present in one
+   tree and not the other, or differing in any of those, fails the check. Dependencies are not
+   compared: they legitimately differ (for example err_trace and its Melange build). *)
 
 type sexp = Atom of string | List of sexp list
 
@@ -74,6 +74,14 @@ let ml_files dir =
   else []
 
 let normalize m = String.uncapitalize_ascii m
+let rec show = function Atom a -> a | List l -> "(" ^ String.concat " " (List.map show l) ^ ")"
+
+type stanza = {
+  modules : string list;
+  backends : sexp list option;
+  wrapped : string;
+  private_modules : string list;
+}
 
 (* The directories a mirror dune file copies sources from. *)
 let copied_dirs dune_dir stanzas =
@@ -125,8 +133,27 @@ let libraries root ~prefix ~mirror =
                               let dirs = if mirror then copied_dirs dir stanzas else [ dir ] in
                               List.concat_map ml_files dirs
                         in
-                        let backends = field "modes" fields in
-                        Hashtbl.replace table name (List.sort_uniq compare modules, backends)
+                        let wrapped =
+                          match field "wrapped" fields with
+                          | None -> "true"
+                          | Some v -> String.concat " " (List.map show v)
+                        in
+                        let private_modules =
+                          match field "private_modules" fields with
+                          | None -> []
+                          | Some ms ->
+                              List.sort_uniq compare
+                                (List.map
+                                   (function Atom a -> normalize a | List _ as l -> show l)
+                                   ms)
+                        in
+                        Hashtbl.replace table name
+                          {
+                            modules = List.sort_uniq compare modules;
+                            backends = field "modes" fields;
+                            wrapped;
+                            private_modules;
+                          }
                     | _ -> ())
                 | _ -> ())
               stanzas))
@@ -142,18 +169,30 @@ let () =
     incr failures;
     Printf.ksprintf prerr_endline fmt
   in
+  let only a b = String.concat " " (List.filter (fun m -> not (List.mem m b)) a) in
   Hashtbl.iter
-    (fun name (mods, modes) ->
+    (fun name n ->
       (* A native library with no [modes] is a tool's helper (i8080_corpus), not production. *)
-      if modes <> None then
+      if n.backends <> None then
         match Hashtbl.find_opt mirror name with
         | None -> fail "melange mirror: library %s has no stanza under melange/" name
-        | Some (mmods, backends) ->
-            if mods <> mmods then
+        | Some m ->
+            if n.modules <> m.modules then
               fail "melange mirror: library %s differs; native only [%s], melange only [%s]" name
-                (String.concat " " (List.filter (fun m -> not (List.mem m mmods)) mods))
-                (String.concat " " (List.filter (fun m -> not (List.mem m mods)) mmods));
-            if not (match backends with Some l -> List.mem (Atom "melange") l | None -> false)
+                (only n.modules m.modules) (only m.modules n.modules);
+            if n.wrapped <> m.wrapped then
+              fail
+                "melange mirror: library %s is (wrapped %s) natively but (wrapped %s) under \
+                 melange/"
+                name n.wrapped m.wrapped;
+            if n.private_modules <> m.private_modules then
+              fail
+                "melange mirror: library %s private_modules differ; native only [%s], melange only \
+                 [%s]"
+                name
+                (only n.private_modules m.private_modules)
+                (only m.private_modules n.private_modules);
+            if not (match m.backends with Some l -> List.mem (Atom "melange") l | None -> false)
             then fail "melange mirror: library %s is not built in melange mode" name)
     native;
   Hashtbl.iter
@@ -162,7 +201,7 @@ let () =
         fail "melange mirror: library %s exists only under melange/" name)
     mirror;
   let native =
-    Hashtbl.filter_map_inplace (fun _ ((_, m) as v) -> if m = None then None else Some v) native;
+    Hashtbl.filter_map_inplace (fun _ v -> if v.backends = None then None else Some v) native;
     native
   in
   Printf.printf "melange mirror: %d native libraries, %d mirrored, %s\n" (Hashtbl.length native)

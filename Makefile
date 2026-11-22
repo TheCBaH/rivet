@@ -114,7 +114,8 @@ tool-gate: tools-build
 melange-optin:
 	scripts/asm-melange-optin.sh
 
-# The Melange mirror lists the same libraries and modules as the native tree. Needs no Melange.
+# The Melange mirror lists the same libraries, modules, wrapped and private_modules as the native
+# tree. Needs no Melange.
 melange-mirror:
 	scripts/melange-mirror-check.sh
 

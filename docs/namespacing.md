@@ -139,8 +139,8 @@ browser programs) or excluded. Not mirrored, because Melange does not build
 them: `oracle`, `oracle_run`, `differential`, `test_support`,
 `rivet-native-exec`, `i8080_corpus` and the test libraries.
 
-`make melange-mirror` compares library names, module lists and `modes`
-for the 47 libraries under `lib`, `targets`,
+`make melange-mirror` compares library names, module lists, `modes`,
+`wrapped` and `private_modules` for the 47 libraries under `lib`, `targets`,
 `driver`, `driver_direct`, `text_pipeline` and `browser`. The mirrors under
 `melange/test/dump`, `melange/test/lib/foundation` and `melange/vendor/fmt`
 are outside it; renaming `test_dump_inputs` (R6) in one tree only is caught

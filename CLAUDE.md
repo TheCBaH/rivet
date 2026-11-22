@@ -107,7 +107,7 @@ construct the source/semantic/lowered AST directly.
   build can be gated behind `RIVET_MELANGE`/`RIVET_BACKEND` env vars without
   dune's per-library `modes` conditionals; native, js_of_ocaml, and Melange are
   required to produce byte-identical output. A new library needs a stanza in both trees;
-  `make melange-mirror` (part of `make ci`) fails on any library or module-list drift.
+  `make melange-mirror` (part of `make ci`) fails on any drift in libraries, module lists, `wrapped` or `private_modules`.
 - Every library has a public name in the `rivet` package (`rivet.<library>`), so
   a consuming project can vendor this repository and depend on it.
 

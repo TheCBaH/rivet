@@ -150,7 +150,8 @@ jobs:
     - name: melange opt-in
       run: |
         ${{ env.EXEC }} make melange-optin
-    # The Melange mirror lists the same libraries and modules as the native tree.
+    # The Melange mirror lists the same libraries, modules, wrapped and private_modules as the
+    # native tree.
     - name: melange mirror
       run: |
         ${{ env.EXEC }} make melange-mirror

@@ -102,7 +102,8 @@ Enforced by scripts run in `make ci`, not by convention:
 Native OCaml, js_of_ocaml and Melange must give byte-identical images. Melange
 cannot be a `modes` condition, so `melange/` mirrors every library stanza and
 copies the sources with `copy_files`. `scripts/melange-mirror-check.sh` fails
-when a library or its module list differs between the two trees.
+when a library, its module list, `wrapped` or `private_modules` differs between
+the two trees.
 
 ## What is deliberately not here
 
