@@ -19,15 +19,15 @@
   rivet_foundation
   rivet_compute
   rivet_asm_core
-  i8080
-  i8080_text
-  i8080_asm
+  rivet_i8080
+  rivet_i8080_text
+  rivet_i8080_asm
   i8080_corpus
-  i8080_encode
-  i8080_as
-  i8080_ops
-  i8080_sem
-  i8080_run)
+  rivet_i8080_encode
+  rivet_i8080_as
+  rivet_i8080_ops
+  rivet_i8080_sem
+  rivet_i8080_run)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

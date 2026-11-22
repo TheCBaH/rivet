@@ -6,7 +6,7 @@
    conditional assembly, [equ]/[set], several [org]s, [ds], [dup], [end], [$],
    and the literal spellings [NNh], [NNb], [0xNN], [$NN] and [NNd]. Expressions
    use AS's operators and priorities. Instructions are not parsed here: each is
-   handed to {!I8080_encode} as soon as its operands have values, so the table
+   handed to {!Rivet_i8080_encode} as soon as its operands have values, so the table
    stays the only list of opcodes.
 
    Anything the dialect does not cover is reported with its source position
@@ -14,7 +14,7 @@
    unsupported construct of a file. *)
 
 open Rivet_foundation
-module E = I8080_encode
+module E = Rivet_i8080_encode
 
 type loc = { file : string; line : int; via : (string * int) list }
 type diagnostic = { loc : loc; message : string }

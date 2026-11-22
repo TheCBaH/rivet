@@ -34,17 +34,19 @@ let asm args =
   in
   match parse (None, None, None, None) args with
   | Some src, out, lst, sym -> (
-      match I8080_as.assemble ~file:(Filename.basename src) (read_file src) with
-      | Error ds -> die "%s" (I8080_as.render ds)
+      match Rivet_i8080_as.assemble ~file:(Filename.basename src) (read_file src) with
+      | Error ds -> die "%s" (Rivet_i8080_as.render ds)
       | Ok img ->
-          let origin, bytes = I8080_as.flatten ?range:!range img in
+          let origin, bytes = Rivet_i8080_as.flatten ?range:!range img in
           Option.iter (fun o -> write_file o bytes) out;
-          Option.iter (fun l -> write_file l (I8080_as.listing_to_string img ^ "\n")) lst;
+          Option.iter (fun l -> write_file l (Rivet_i8080_as.listing_to_string img ^ "\n")) lst;
           Option.iter
             (fun s ->
               write_file s
                 (String.concat ""
-                   (List.map (fun (n, v) -> Printf.sprintf "%s %04x\n" n v) img.I8080_as.symbols)))
+                   (List.map
+                      (fun (n, v) -> Printf.sprintf "%s %04x\n" n v)
+                      img.Rivet_i8080_as.symbols)))
             sym;
           Printf.printf "%04x %d\n" origin (String.length bytes))
   | _ -> die "usage: i8080_tool asm <source> -o <image>"
@@ -52,7 +54,7 @@ let asm args =
 (* Deliberate model bugs, to show that the differential runs notice one. *)
 let plant name =
   let mutate (module V : Rivet_compute.VALUE with type t = int) =
-    let module R = I8080_run.Make (I8080_sem.Runnable (V)) in
+    let module R = Rivet_i8080_run.Make (Rivet_i8080_sem.Runnable (V)) in
     R.run
   in
   match name with
@@ -143,16 +145,16 @@ let run args =
   | Some prog, Some dir ->
       let shim =
         {
-          I8080_run.boot = read_file (Filename.concat dir "shim-boot.bin");
+          Rivet_i8080_run.boot = read_file (Filename.concat dir "shim-boot.bin");
           bdos = read_file (Filename.concat dir "shim-bdos.bin");
           handler = read_file (Filename.concat dir "shim-handler.bin");
         }
       in
-      let run = match !planted with None -> I8080_run.run | Some n -> plant n in
+      let run = match !planted with None -> Rivet_i8080_run.run | Some n -> plant n in
       let state_log = Buffer.create 4096 in
       let before =
         Option.map
-          (fun _ (g : I8080_sem.regs) ->
+          (fun _ (g : Rivet_i8080_sem.regs) ->
             Buffer.add_string state_log
               (Printf.sprintf "C%dZ%dM%dE%d A=%02X B=%02X%02X D=%02X%02X H=%02X%02X S=%04X P=%04X\n"
                  (g.flags land 1)
@@ -168,7 +170,7 @@ let run args =
             (if !trace then
                Some
                  (function
-                 | I8080_sem.Ev_fetch (a, v) -> Printf.eprintf "fetch %04x %02x\n" a v
+                 | Rivet_i8080_sem.Ev_fetch (a, v) -> Printf.eprintf "fetch %04x %02x\n" a v
                  | Ev_read (a, v) -> Printf.eprintf "read %04x %02x\n" a v
                  | Ev_write (a, v) -> Printf.eprintf "write %04x %02x\n" a v
                  | Ev_in (a, v) -> Printf.eprintf "in %02x %02x\n" a v
@@ -176,15 +178,15 @@ let run args =
              else None)
           ~shim (read_file prog)
       in
-      print_string r.I8080_run.console;
-      Option.iter (fun f -> write_file f r.I8080_run.console) !console;
+      print_string r.Rivet_i8080_run.console;
+      Option.iter (fun f -> write_file f r.Rivet_i8080_run.console) !console;
       Option.iter (fun f -> write_file f (Buffer.contents state_log)) !states;
-      Option.iter (fun f -> write_file f (Bytes.to_string r.I8080_run.memory)) !dump;
+      Option.iter (fun f -> write_file f (Bytes.to_string r.Rivet_i8080_run.memory)) !dump;
       Option.iter
         (fun f ->
           write_file f
             (String.concat ""
-               (List.map (fun (p, v) -> Printf.sprintf "%02x %02x\n" p v) r.I8080_run.io_out)))
+               (List.map (fun (p, v) -> Printf.sprintf "%02x %02x\n" p v) r.Rivet_i8080_run.io_out)))
         !io_out;
       Option.iter
         (fun f ->
@@ -192,24 +194,24 @@ let run args =
             (String.concat ""
                (List.filter_map Fun.id
                   (List.init 256 (fun i ->
-                       if Bytes.get r.I8080_run.seen i <> '\000' then
+                       if Bytes.get r.Rivet_i8080_run.seen i <> '\000' then
                          Some (Printf.sprintf "%02x\n" i)
                        else None)))))
         !opcodes;
       let status =
-        match r.I8080_run.status with
-        | I8080_run.Exited -> "exited"
+        match r.Rivet_i8080_run.status with
+        | Rivet_i8080_run.Exited -> "exited"
         | Halted -> "halted"
         | Limit -> "instruction limit"
         | Fault m -> "fault: " ^ m
       in
-      Printf.eprintf "status=%s instructions=%d tstates=%d\n" status r.I8080_run.instructions
-        r.I8080_run.tstates;
+      Printf.eprintf "status=%s instructions=%d tstates=%d\n" status r.Rivet_i8080_run.instructions
+        r.Rivet_i8080_run.tstates;
       (if !regs then
-         let g = r.I8080_run.regs in
+         let g = r.Rivet_i8080_run.regs in
          Printf.eprintf "a=%02x f=%02x b=%02x c=%02x d=%02x e=%02x h=%02x l=%02x sp=%04x pc=%04x\n"
-           g.I8080_sem.ra g.flags g.rb g.rc g.rd g.re g.rh g.rl g.rsp g.rpc);
-      exit (if r.I8080_run.status = I8080_run.Exited then 0 else 2)
+           g.Rivet_i8080_sem.ra g.flags g.rb g.rc g.rd g.re g.rh g.rl g.rsp g.rpc);
+      exit (if r.Rivet_i8080_run.status = Rivet_i8080_run.Exited then 0 else 2)
   | _ -> die "usage: i8080_tool run <program> --shim <dir>"
 
 (* dis: every opcode byte as Rivet decodes and prints it, one line each: bytes
@@ -217,13 +219,13 @@ let run args =
    the text with asl and compares the bytes. *)
 let dis () =
   for b = 0 to 255 do
-    let len = I8080_ops.timings.(b).I8080_ops.length in
+    let len = Rivet_i8080_ops.timings.(b).Rivet_i8080_ops.length in
     let operand i = if len = 2 then 0x2a else if i = 1 then 0x00 else 0x20 in
     let raw = String.init len (fun i -> Char.chr (if i = 0 then b else operand i)) in
     let bytes =
       String.concat " " (List.init len (fun i -> Printf.sprintf "%02x" (Char.code raw.[i])))
     in
-    match I8080_text.canonical ~origin:0 raw with
+    match Rivet_i8080_text.canonical ~origin:0 raw with
     | Error _ -> die "dis: %02x does not decode" b
     | Ok c ->
         let text =
@@ -232,27 +234,29 @@ let dis () =
           | _ -> die "dis: %02x: unexpected canonical text" b
         in
         let cls =
-          match I8080_ops.form_of_byte b with Some (I8080_ops.Alias _) -> "alias" | _ -> "doc"
+          match Rivet_i8080_ops.form_of_byte b with
+          | Some (Rivet_i8080_ops.Alias _) -> "alias"
+          | _ -> "doc"
         in
         Printf.printf "%s\t%s\t%d\t%s\n" bytes text len cls
   done
 
 (* builders: the corpus of typed builders, one line each in the layout of [dis]: bytes
-   assembled through [I8080_asm.Program], the instruction's printed text, length, "builder". *)
+   assembled through [Rivet_i8080_asm.Program], the instruction's printed text, length, "builder". *)
 let builders () =
   List.iter
     (fun i ->
-      match I8080_asm.Program.assemble [ I8080_asm.insn i ] with
+      match Rivet_i8080_asm.Program.assemble [ Rivet_i8080_asm.insn i ] with
       | Error e ->
           die "builders: %s"
             (Rivet_foundation.Diagnostic.render_all (Rivet_foundation.Diag.diagnostics e))
       | Ok img ->
-          let bytes = img.I8080_asm.Program.bytes in
+          let bytes = img.Rivet_i8080_asm.Program.bytes in
           Printf.printf "%s\t%s\t%d\tbuilder\n"
             (String.concat " "
                (List.init (String.length bytes) (fun k ->
                     Printf.sprintf "%02x" (Char.code bytes.[k]))))
-            (Format.asprintf "%a" I8080_encode.Instruction.pp i)
+            (Format.asprintf "%a" Rivet_i8080_encode.Instruction.pp i)
             (String.length bytes))
     I8080_corpus.all
 

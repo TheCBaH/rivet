@@ -4,8 +4,8 @@ let hex s =
 let render e = Rivet_foundation.Diagnostic.render_all (Rivet_foundation.Diag.diagnostics e)
 
 let assemble text =
-  match I8080_text.assemble text with
-  | Ok { I8080_text.origin; bytes } -> Printf.sprintf "%04x: %s" origin (hex bytes)
+  match Rivet_i8080_text.assemble text with
+  | Ok { Rivet_i8080_text.origin; bytes } -> Printf.sprintf "%04x: %s" origin (hex bytes)
   | Error e -> "REFUSED " ^ render e
 
 (* Each of the 256 bytes, with operand bytes after it, decodes to canonical text
@@ -17,22 +17,22 @@ let%expect_test "all 256 opcode bytes decode, print and re-assemble to themselve
   let fail fmt = Printf.ksprintf (fun m -> failures := m :: !failures) fmt in
   let documented = ref 0 and alias = ref 0 in
   for b = 0 to 255 do
-    let len = I8080_ops.timings.(b).I8080_ops.length in
+    let len = Rivet_i8080_ops.timings.(b).Rivet_i8080_ops.length in
     let raw =
       String.init len (fun i ->
           Char.chr (if i = 0 then b else if len = 2 then 0x2a else if i = 1 then 0 else 0x20))
     in
-    (match I8080_ops.form_of_byte b with
-    | Some (I8080_ops.Documented _) -> incr documented
-    | Some (I8080_ops.Alias _) -> incr alias
+    (match Rivet_i8080_ops.form_of_byte b with
+    | Some (Rivet_i8080_ops.Documented _) -> incr documented
+    | Some (Rivet_i8080_ops.Alias _) -> incr alias
     | None -> fail "%02x: no form" b);
-    match I8080_text.canonical ~origin:0 raw with
+    match Rivet_i8080_text.canonical ~origin:0 raw with
     | Error e -> fail "%02x: decode: %s" b (render e)
     | Ok c -> (
-        match I8080_text.assemble c with
+        match Rivet_i8080_text.assemble c with
         | Ok i ->
-            if i.I8080_text.bytes <> raw then
-              fail "%02x: canonical re-assembles to %s" b (hex i.I8080_text.bytes)
+            if i.Rivet_i8080_text.bytes <> raw then
+              fail "%02x: canonical re-assembles to %s" b (hex i.Rivet_i8080_text.bytes)
         | Error e -> fail "%02x: canonical text refused: %s" b (render e))
   done;
   Printf.printf "bytes=256 documented=%d alias=%d\n" !documented !alias;
@@ -82,7 +82,7 @@ mvi a, 255
 
 let%expect_test "canonical text round-trips a program" =
   (match
-     I8080_text.assemble
+     Rivet_i8080_text.assemble
        {|org 0x0100
 again:	lxi sp, 0xf000
 call again
@@ -95,8 +95,8 @@ ret
 |}
    with
   | Error e -> print_endline (render e)
-  | Ok { I8080_text.origin; bytes } -> (
-      match I8080_text.canonical ~origin bytes with
+  | Ok { Rivet_i8080_text.origin; bytes } -> (
+      match Rivet_i8080_text.canonical ~origin bytes with
       | Error e -> print_endline (render e)
       | Ok text ->
           print_string text;
@@ -199,5 +199,5 @@ let%expect_test "diagnostics" =
       ^^ |}]
 
 let%expect_test "the codec is consistent" =
-  print_endline (String.concat "; " (I8080_text.check_codec ()));
+  print_endline (String.concat "; " (Rivet_i8080_text.check_codec ()));
   [%expect {| |}]

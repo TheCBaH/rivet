@@ -1,7 +1,7 @@
 (** Typed builders for the Intel 8080 instructions, and programs of them.
 
-    A builder is named by its mnemonic and returns the {!I8080_encode.Instruction.t} the
-    encoder lowers: [let open I8080_asm in [ lxi sp 0xf000; mvi a 42; sta 0x8000; hlt () ]]. A
+    A builder is named by its mnemonic and returns the {!Rivet_i8080_encode.Instruction.t} the
+    encoder lowers: [let open Rivet_i8080_asm in [ lxi sp 0xf000; mvi a 42; sta 0x8000; hlt () ]]. A
     builder only selects the descriptor-table entry and wraps its operands; no opcode byte is
     listed here. Immediates and addresses are [int] and are range-checked when the program is
     assembled; the [_e] variant of a builder with an immediate takes an {!Rivet_asm_core.Expr.t}, for
@@ -11,11 +11,11 @@
     [mov bc a], [push sp] and [ldax hl] do not compile. [mov m m] (the slot of [hlt]) and the
     ranges of immediates are diagnostics of assembly. *)
 
-type t = I8080_encode.Instruction.t
+type t = Rivet_i8080_encode.Instruction.t
 
 (** {1 Operands} *)
 
-type reg = I8080_encode.Reg.t
+type reg = Rivet_i8080_encode.Reg.t
 (** [b c d e h l m a]; [m] is the memory byte at [hl]. *)
 
 type pair = [ `Bc | `De | `Hl | `Sp ]
@@ -178,7 +178,7 @@ type item
 (** An instruction, a label or data, in program order. *)
 
 val insn : t -> item
-(** Any instruction value, including one built from the generic {!I8080_encode.Instruction.Insn};
+(** Any instruction value, including one built from the generic {!Rivet_i8080_encode.Instruction.Insn};
     a malformed one is a diagnostic of assembly. *)
 
 val label : string -> item
@@ -201,7 +201,7 @@ val space : int -> item
 
 module Items : sig
   (** The same builders returning {!item}, so a program is a plain list and needs no {!insn}:
-      [let open I8080_asm.Items in [ lxi sp 0xf000; label "loop"; dcr b; jnz_e (symbol "loop"); hlt () ]].
+      [let open Rivet_i8080_asm.Items in [ lxi sp 0xf000; label "loop"; dcr b; jnz_e (symbol "loop"); hlt () ]].
       The operands, the expression helpers and the data items are those above. *)
 
   val b : reg

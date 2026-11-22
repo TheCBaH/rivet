@@ -10,11 +10,11 @@
 
 open Rivet_foundation
 open Rivet_asm_core
-module P = Rivet_text_pipeline.Pipeline.Make (I8080)
+module P = Rivet_text_pipeline.Pipeline.Make (Rivet_i8080)
 
 type image = { origin : int; bytes : string }
 
-let with_text_section (m : I8080.Surface.t Rivet_asm_syntax.Source_ast.module_) =
+let with_text_section (m : Rivet_i8080.Surface.t Rivet_asm_syntax.Source_ast.module_) =
   let open Rivet_asm_syntax.Source_ast in
   let starts_section = function
     | Directive { name; _ } -> List.mem name [ ".text"; ".data"; ".section" ]
@@ -32,10 +32,10 @@ let with_text_section (m : I8080.Surface.t Rivet_asm_syntax.Source_ast.module_) 
 
 (* [org] must come first (nothing before it may occupy an address) and only
    once; absent means 0. *)
-let origin_of (m : I8080.Instruction.t Normalized_ast.module_) =
+let origin_of (m : Rivet_i8080.Instruction.t Normalized_ast.module_) =
   let fail origin =
     Diag.fail ~pos:__POS__
-      [ I8080.error_diagnostic (Rivet_target_error.make ~origin `Org_misplaced) ]
+      [ Rivet_i8080.error_diagnostic (Rivet_target_error.make ~origin `Org_misplaced) ]
   in
   let rec go seen_content found = function
     | [] -> Ok (Option.value found ~default:0)
@@ -43,7 +43,7 @@ let origin_of (m : I8080.Instruction.t Normalized_ast.module_) =
         ignore origin;
         go true found rest
     | Normalized_ast.Directive _ :: rest -> go seen_content found rest
-    | Normalized_ast.Instruction { insn = I8080.Instruction.Org n; origin } :: rest ->
+    | Normalized_ast.Instruction { insn = Rivet_i8080.Instruction.Org n; origin } :: rest ->
         if seen_content || found <> None then fail origin else go seen_content (Some n) rest
     | Normalized_ast.Instruction _ :: rest -> go true found rest
   in
@@ -59,8 +59,8 @@ let assemble ?(unit_name = "i8080") text =
   let* origin = origin_of norm in
   let* low = stage (P.lower ~state norm) in
   let* laid = stage (P.plan low) in
-  let* img = I8080_asm.Program.bind ~origin laid in
-  Ok { origin; bytes = img.I8080_asm.Program.bytes }
+  let* img = Rivet_i8080_asm.Program.bind ~origin laid in
+  Ok { origin; bytes = img.Rivet_i8080_asm.Program.bytes }
 
 (* The canonical text of [bytes] loaded at [origin]: an [org] line, then one
    instruction per line. Feeding it back to {!assemble} yields the same image. *)

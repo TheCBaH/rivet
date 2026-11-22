@@ -2,7 +2,7 @@
    builders, with the boundary values of its immediates. The unit tests check
    each against the text assembler and the oracle leg against asl. *)
 
-open I8080_asm
+open Rivet_i8080_asm
 
 let regs = [ b; c; d; e; h; l; m; a ]
 let pairs : pair list = [ bc; de; hl; sp ]

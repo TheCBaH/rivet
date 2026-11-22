@@ -14,17 +14,18 @@ type result = {
   status : status;
   instructions : int;
   tstates : int;
-  regs : I8080_sem.regs;
+  regs : Rivet_i8080_sem.regs;
   memory : Bytes.t;
   seen : Bytes.t;
 }
 
-module Make (S : I8080_sem.RUNNABLE) = struct
+module Make (S : Rivet_i8080_sem.RUNNABLE) = struct
   (* [interrupt]: the bytes an interrupt-acknowledge cycle supplies, with INT held high
      from the start; it is taken at the first instruction boundary where interrupts are on. *)
   let run ?(max_instructions = max_int) ?(input = fun _ -> 0xff) ?(load = 0x100) ?(pc = 0x100)
-      ?(sp = 0xfe00) ?(interrupt : int list option) ?(trace : (I8080_sem.event -> unit) option)
-      ?(before : (I8080_sem.regs -> unit) option) ~shim program =
+      ?(sp = 0xfe00) ?(interrupt : int list option)
+      ?(trace : (Rivet_i8080_sem.event -> unit) option)
+      ?(before : (Rivet_i8080_sem.regs -> unit) option) ~shim program =
     let overlaps (at, len) =
       load < at + len && at < load + String.length program && String.length program > 0
     in
@@ -79,4 +80,4 @@ module Make (S : I8080_sem.RUNNABLE) = struct
     }
 end
 
-include Make (I8080_sem.Runnable (Rivet_compute.Concrete))
+include Make (Rivet_i8080_sem.Runnable (Rivet_compute.Concrete))

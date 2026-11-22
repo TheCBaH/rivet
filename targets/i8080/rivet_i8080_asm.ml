@@ -1,15 +1,15 @@
 (* Typed builders for the Intel 8080 instructions, and programs of them.
 
-   A builder selects its {!I8080_ops} entry by mnemonic and wraps its operands, so
+   A builder selects its {!Rivet_i8080_ops} entry by mnemonic and wraps its operands, so
    no opcode byte is listed here; the encoder's lowering still checks ranges. The
-   byte registers are {!I8080_encode.Reg.t}; the register pairs are closed
+   byte registers are {!Rivet_i8080_encode.Reg.t}; the register pairs are closed
    polymorphic variants, so a pair where a byte register is expected, or [sp]
    where [push] wants [psw], does not compile. *)
 
 open Rivet_foundation
 open Rivet_asm_core
-module E = I8080_encode
-module Ops = I8080_ops
+module E = Rivet_i8080_encode
+module Ops = Rivet_i8080_ops
 module Operand = E.Operand
 module Reg = E.Reg
 

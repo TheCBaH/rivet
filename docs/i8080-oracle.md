@@ -13,10 +13,10 @@ when nothing is fetched.
 Expected bytes come from `asl`, expected execution from `altairz80` and
 `vm80a_sim`; neither is derived from Rivet's descriptor table.
 
-## The AS dialect (`I8080_as`)
+## The AS dialect (`Rivet_i8080_as`)
 
 `targets/i8080/i8080_as.ml` reads the dialect of AS for `cpu 8080`, over the
-target's encoder (`I8080_encode`), which stays the only list of opcodes:
+target's encoder (`Rivet_i8080_encode`), which stays the only list of opcodes:
 `cpu`, `org` (several), `equ`, `set`/`=`, `db`, `dw`, `ds`, `dup`, `end`,
 `error`, `macro`/`endm` with `$$` locals, `rept`, `if`/`else`/`elseif`/`endif`/
 `ifdef`/`ifndef`, `$`, the literal forms `NNh`, `NNb`, `NNo`/`NNq`, `NNd`,
@@ -42,7 +42,7 @@ ignored `title`/`page`/`list`.
 | `i8080-oracle-sources.sh` | AS-syntax `8080PRE`, `8080EX1` and the K5 shim assembled by both; the M80 originals are refused with positions |
 | `i8080-oracle-model.sh` | `8080PRE` and `8080EX1` in the model through the K5 shim, console text equal to `altairz80` |
 | `i8080-oracle-dis.sh` | all 256 bytes as Rivet decodes and prints them (`i8080_tool dis`), assembled by `asl`: same bytes, so the decoder, the printer and every length are checked against a third-party assembler |
-| `i8080-oracle-dis.sh … builders` | the 614 instructions of `I8080_corpus` (every operand shape of every documented instruction, with the boundary values of its immediates), built with `I8080_asm`, assembled through `I8080_asm.Program`, printed, and assembled by `asl`: same bytes |
+| `i8080-oracle-dis.sh … builders` | the 614 instructions of `I8080_corpus` (every operand shape of every documented instruction, with the boundary values of its immediates), built with `Rivet_i8080_asm`, assembled through `Rivet_i8080_asm.Program`, printed, and assembled by `asl`: same bytes |
 | `i8080-oracle-diff.sh` | seeded generated programs (`i8080_tool gen`) in the model, `altairz80` and `vm80a_sim`: every OUT and the 64 KiB image against `vm80a_sim`, console and memory below `FF00` against `altairz80`; planted model bugs (`--plant`) must be caught |
 | `i8080-oracle-interrupt.sh` | INT held high with `RST 0` supplied, after `EI; NOP`, `EI; EI`, `EI; EI; EI`, `EI; DI`, `EI; DI; EI`, `EI; EI; DI`: the OUT list in the model and in `vm80a_sim`. In `vm80a_sim` the acknowledge is not taken at the boundary after any `EI` or `DI`, so `EI; EI` enables interrupts after the instruction that follows the second `EI` |
 | `i8080-oracle-cycles.sh` | the T-states of every form, taken and not taken, in `vm80a_sim` and the model |
@@ -62,18 +62,18 @@ comparison, and say so:
   with `DI`.
 - `asl` accepts `ldax h` as `mov a,m`; Rivet refuses it (`oracle-known.txt`).
 
-## The model (`rivet.compute`, `I8080_sem`)
+## The model (`rivet.compute`, `Rivet_i8080_sem`)
 
 `rivet.compute` is target neutral: fixed-width values and byte memory as two
 signatures, a concrete interpretation (`int`, widths up to 30), a term-building
 one (`Rivet_compute.Term`: hash-consed, widths up to 64, memoised `eval` and printing)
 and a few derived operations. Each entry of
-the descriptor table (`I8080_ops`) carries its effect, written once against a
-small `MACHINE` signature, and its T-states. `I8080_sem.Make` supplies the
+the descriptor table (`Rivet_i8080_ops`) carries its effect, written once against a
+small `MACHINE` signature, and its T-states. `Rivet_i8080_sem.Make` supplies the
 machine (registers, five flags, stack, `IN`/`OUT` as an environment, `HLT`, `EI`
 delayed by one instruction, interrupt-supplied instructions, an ordered access
 list) over any value interpretation and compiles the table to one closure per
-opcode byte. `Model` is the concrete instance and `I8080_run` runs a program
+opcode byte. `Model` is the concrete instance and `Rivet_i8080_run` runs a program
 under the K5 shim. `8080EX1` takes about two minutes and counts the same
 23,803,352,043 T-states and 2,919,049,315 instructions as `vm80a_sim`.
 

@@ -1,3 +1,3 @@
 (* requires: rivet.i8080_asm *)
 (* error: string *)
-let _ = I8080_asm.(jmp "loop")
+let _ = Rivet_i8080_asm.(jmp "loop")

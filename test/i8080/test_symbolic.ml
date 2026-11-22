@@ -2,10 +2,10 @@
    expressions, evaluated, equal what the concrete interpretation computes.
    Each of the 256 opcode bytes is stepped once from the same state in both. *)
 
-module C = I8080_sem.Model
+module C = Rivet_i8080_sem.Model
 module T = Rivet_compute.Term
 module TM = Rivet_compute.Term_memory
-module Sym = I8080_sem.Make (T) (TM)
+module Sym = Rivet_i8080_sem.Make (T) (TM)
 
 let pattern a = ((a * 7) + 13) land 0xff
 let origin = 0x100

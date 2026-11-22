@@ -1,6 +1,6 @@
 (* The Intel 8080 front end: how Intel-syntax source text becomes operands.
 
-   {!I8080_encode} is the rest of the target; this file is what
+   {!Rivet_i8080_encode} is the rest of the target; this file is what
    {!Rivet_target_intf.Target.TARGET} adds to {!Rivet_target_encode.ENCODE}: a lexical
    profile, an operand parser and a directive handler. Comments start with [;],
    registers are bare identifiers (a symbol with a register's name is a
@@ -9,7 +9,7 @@
    instructions; no directive is the target's. *)
 
 open Rivet_foundation
-include I8080_encode
+include Rivet_i8080_encode
 
 type parse_error_kind = [ `Cannot_parse_operand of cannot_parse ]
 

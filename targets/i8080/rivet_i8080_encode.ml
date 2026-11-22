@@ -1,14 +1,14 @@
 (* The Intel 8080 encoder: instruction types, lowering, the codec, decoding and
    the canonical printer.
 
-   Everything instruction-specific is read from {!I8080_ops}. This library
-   satisfies {!Rivet_target_encode.ENCODE} and reaches no lexer; {!I8080} adds the
+   Everything instruction-specific is read from {!Rivet_i8080_ops}. This library
+   satisfies {!Rivet_target_encode.ENCODE} and reaches no lexer; {!Rivet_i8080} adds the
    text front end. The 8080 has no relative branches, no prefixes and one
    instruction length per opcode, so every encoding is [`Fixed]. *)
 
 open Rivet_foundation
 module C = Rivet_codec
-module Ops = I8080_ops
+module Ops = Rivet_i8080_ops
 module L = Rivet_asm_core.Lowered_ast
 
 let name = "i8080"

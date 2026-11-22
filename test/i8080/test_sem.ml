@@ -1,10 +1,10 @@
-module S = I8080_sem.Model
+module S = Rivet_i8080_sem.Model
 
 let run ?(setup = fun _ -> ()) src =
-  match I8080_as.assemble src with
-  | Error ds -> failwith (I8080_as.render ds)
+  match Rivet_i8080_as.assemble src with
+  | Error ds -> failwith (Rivet_i8080_as.render ds)
   | Ok img ->
-      let origin, bytes = I8080_as.flatten img in
+      let origin, bytes = Rivet_i8080_as.flatten img in
       let env = { S.input = (fun _ -> 0xff); output = (fun _ _ -> ()) } in
       let st = S.create ~env (S.create_memory ()) in
       S.poke st origin bytes;
@@ -18,7 +18,7 @@ let run ?(setup = fun _ -> ()) src =
 let show st =
   let r = S.regs st in
   Printf.printf "a=%02x f=%02x b=%02x c=%02x h=%02x l=%02x sp=%04x pc=%04x t=%d n=%d\n"
-    r.I8080_sem.ra r.flags r.rb r.rc r.rh r.rl r.rsp r.rpc st.S.tstates st.S.instructions
+    r.Rivet_i8080_sem.ra r.flags r.rb r.rc r.rh r.rl r.rsp r.rpc st.S.tstates st.S.instructions
 
 let%expect_test "the MVI/STA/HLT fixture: 27 T-states and one write" =
   let writes = ref [] in
@@ -64,10 +64,10 @@ let%expect_test "conditional return and call cost more when taken" =
 (* {1 EI takes effect after the next instruction; DI cancels it} *)
 
 let interrupt_after src steps =
-  match I8080_as.assemble src with
-  | Error ds -> failwith (I8080_as.render ds)
+  match Rivet_i8080_as.assemble src with
+  | Error ds -> failwith (Rivet_i8080_as.render ds)
   | Ok img ->
-      let origin, bytes = I8080_as.flatten img in
+      let origin, bytes = Rivet_i8080_as.flatten img in
       let env = { S.input = (fun _ -> 0xff); output = (fun _ _ -> ()) } in
       let st = S.create ~env (S.create_memory ()) in
       S.poke st origin bytes;

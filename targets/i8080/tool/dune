@@ -4,7 +4,7 @@
 (library
  (name i8080_corpus)
  (modules i8080_corpus)
- (libraries i8080_asm)
+ (libraries rivet_i8080_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -14,14 +14,14 @@
  (modes native)
  (libraries
   rivet_compute
-  i8080_asm
+  rivet_i8080_asm
   i8080_corpus
-  i8080_encode
-  i8080_as
-  i8080_ops
-  i8080_sem
-  i8080_text
-  i8080_run
+  rivet_i8080_encode
+  rivet_i8080_as
+  rivet_i8080_ops
+  rivet_i8080_sem
+  rivet_i8080_text
+  rivet_i8080_run
   rivet_foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

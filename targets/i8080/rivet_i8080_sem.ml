@@ -4,7 +4,7 @@
 
    The model is a functor so that a symbolic interpretation can reuse the
    semantics; {!Model} is the concrete one. Lengths, no-wait T-states and the
-   effects are the descriptor table's ({!I8080_ops}): the same entries run here
+   effects are the descriptor table's ({!Rivet_i8080_ops}): the same entries run here
    over any value interpretation, and are checked against third-party
    assemblers and emulators (docs/i8080-oracle.md), not against a second table.
 
@@ -14,7 +14,7 @@
    [EI] takes effect after the next instruction. An interrupt-acknowledge fetch
    does not advance PC. *)
 
-module Desc = I8080_ops
+module Desc = Rivet_i8080_ops
 
 exception Not_concrete
 

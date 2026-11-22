@@ -1,3 +1,3 @@
 (* requires: rivet.i8080_asm *)
 (* error: `Psw *)
-let _ = I8080_asm.(lxi psw 0)
+let _ = Rivet_i8080_asm.(lxi psw 0)

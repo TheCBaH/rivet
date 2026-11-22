@@ -1,6 +1,6 @@
-module E = I8080_encode
-module Ops = I8080_ops
-module S = I8080_sem.Runnable (Rivet_compute.Concrete)
+module E = Rivet_i8080_encode
+module Ops = Rivet_i8080_ops
+module S = Rivet_i8080_sem.Runnable (Rivet_compute.Concrete)
 
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
@@ -9,13 +9,13 @@ let render e = Rivet_foundation.Diagnostic.render_all (Rivet_foundation.Diag.dia
 let text i = Format.asprintf "%a" E.Instruction.pp i
 
 let built ?origin items =
-  match I8080_asm.Program.assemble ?origin items with
+  match Rivet_i8080_asm.Program.assemble ?origin items with
   | Ok img -> img
   | Error e -> failwith (render e)
 
 let show ?origin items =
-  match I8080_asm.Program.assemble ?origin items with
-  | Ok { I8080_asm.Program.origin; bytes; _ } -> Printf.sprintf "%04x: %s" origin (hex bytes)
+  match Rivet_i8080_asm.Program.assemble ?origin items with
+  | Ok { Rivet_i8080_asm.Program.origin; bytes; _ } -> Printf.sprintf "%04x: %s" origin (hex bytes)
   | Error e -> "REFUSED " ^ render e
 
 let mnemonic = function E.Instruction.Insn { entry; _ } -> entry.Ops.mnemonic | _ -> "?"
@@ -25,11 +25,15 @@ let%expect_test "every builder shape encodes like its text counterpart" =
   let bad = ref [] in
   List.iter
     (fun i ->
-      match (I8080_asm.Program.assemble [ I8080_asm.insn i ], I8080_text.assemble (text i)) with
+      match
+        ( Rivet_i8080_asm.Program.assemble [ Rivet_i8080_asm.insn i ],
+          Rivet_i8080_text.assemble (text i) )
+      with
       | Ok b, Ok t ->
-          if b.I8080_asm.Program.bytes <> t.I8080_text.bytes then
+          if b.Rivet_i8080_asm.Program.bytes <> t.Rivet_i8080_text.bytes then
             bad :=
-              Printf.sprintf "%s: %s vs %s" (text i) (hex b.bytes) (hex t.I8080_text.bytes) :: !bad
+              Printf.sprintf "%s: %s vs %s" (text i) (hex b.bytes) (hex t.Rivet_i8080_text.bytes)
+              :: !bad
       | Error e, _ | _, Error e -> bad := Printf.sprintf "%s: %s" (text i) (render e) :: !bad)
     I8080_corpus.all;
   Printf.printf "cases=%d mismatches=%d\n" (List.length I8080_corpus.all) (List.length !bad);
@@ -50,13 +54,13 @@ let%expect_test "expression builders resolve a label like text does" =
   let bad = ref 0 in
   List.iter
     (fun i ->
-      let b = built [ I8080_asm.insn i; I8080_asm.label "t" ] in
+      let b = built [ Rivet_i8080_asm.insn i; Rivet_i8080_asm.label "t" ] in
       let t =
-        match I8080_text.assemble (text i ^ "\nt:\n") with
-        | Ok t -> t.I8080_text.bytes
+        match Rivet_i8080_text.assemble (text i ^ "\nt:\n") with
+        | Ok t -> t.Rivet_i8080_text.bytes
         | Error e -> failwith (render e)
       in
-      if b.I8080_asm.Program.bytes <> t then (
+      if b.Rivet_i8080_asm.Program.bytes <> t then (
         incr bad;
         Printf.printf "%s: %s vs %s\n" (text i) (hex b.bytes) (hex t)))
     I8080_corpus.symbolic;
@@ -64,7 +68,7 @@ let%expect_test "expression builders resolve a label like text does" =
   [%expect {| cases=44 mismatches=0 |}]
 
 let%expect_test "the example program" =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   print_endline (show [ insn (lxi sp 0xf000); insn (mvi a 42); insn (sta 0x8000); insn (hlt ()) ]);
   print_endline
     (show ~origin:0x100
@@ -81,7 +85,7 @@ let%expect_test "the example program" =
     0100: 31 00 f0 06 03 05 c2 05 01 76 |}]
 
 let%expect_test "immediate and address boundaries" =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   List.iter
     (fun i -> print_endline (show [ insn i ]))
     [
@@ -114,7 +118,7 @@ let%expect_test "immediate and address boundaries" =
     0000: 31 ff ff |}]
 
 let%expect_test "diagnostics for builders" =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   List.iter
     (fun items -> print_endline (show items))
     [
@@ -155,7 +159,7 @@ let%expect_test "malformed generic instructions are diagnostics, not exceptions"
   let open E in
   let entry n = Option.get (Ops.find_entry n) in
   let imm n = Operand.Imm (Rivet_foundation.Bigint.of_int n) in
-  let generic n args = I8080_asm.insn (Instruction.Insn { entry = entry n; args }) in
+  let generic n args = Rivet_i8080_asm.insn (Instruction.Insn { entry = entry n; args }) in
   List.iter
     (fun items ->
       match show items with
@@ -174,7 +178,7 @@ let%expect_test "malformed generic instructions are diagnostics, not exceptions"
       [ generic "rst" [ Operand.Sym (Rivet_asm_core.Expr.Symbol "x") ] ];
       [ generic "jmp" [ Operand.Str "x" ] ];
       [ generic "mov" [ Operand.Reg Reg.M; Operand.Reg Reg.M ] ];
-      [ I8080_asm.insn (Instruction.Data { width = 1; items = [ Operand.Reg Reg.A ] }) ];
+      [ Rivet_i8080_asm.insn (Instruction.Data { width = 1; items = [ Operand.Reg Reg.A ] }) ];
     ];
   [%expect
     {|
@@ -198,7 +202,7 @@ let%expect_test "malformed generic instructions are diagnostics, not exceptions"
   [%expect {| mov a | nop 1 |}]
 
 let%expect_test "labels: forward, backward, nonzero origin, symbols" =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   let prog =
     [
       insn (jmp_e (symbol "fwd"));
@@ -225,7 +229,7 @@ let%expect_test "labels: forward, backward, nonzero origin, symbols" =
     fff0: c3 f7 ff 00 c3 f3 ff ca f3 ff cd f7 ff 76 | back=fff3 fwd=fff7 |}]
 
 let%expect_test "data, symbols in data, zero storage, address space" =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   let img =
     built ~origin:0x200
       [
@@ -248,7 +252,7 @@ let%expect_test "data, symbols in data, zero storage, address space" =
   Printf.printf "%s\n" (show ~origin:0xfffe [ insn (nop ()); insn (nop ()) ]);
   Printf.printf "%s\n" (show ~origin:0x10000 []);
   Printf.printf "%d bytes at ff00\n"
-    (String.length (built ~origin:0xff00 [ space 0x100 ]).I8080_asm.Program.bytes);
+    (String.length (built ~origin:0xff00 [ space 0x100 ]).Rivet_i8080_asm.Program.bytes);
   Printf.printf "%s\n" (show ~origin:0xff01 [ space 0x100 ]);
   [%expect
     {|
@@ -273,7 +277,7 @@ let run ?(max = 100_000) ?input ~origin img =
 
 (* sum(n) = n + sum(n-1), recursive through the stack; n at 0x8000, result at 0x8001. *)
 let sum_program =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   [
     insn (lxi sp 0xf000);
     insn (lda 0x8000);
@@ -298,7 +302,7 @@ let%expect_test "a recursive program runs to HLT and leaves its result in RAM" =
       let img = built ~origin sum_program in
       List.iter
         (fun n ->
-          let halted, mem = run ~origin ~input:(0x8000, n) img.I8080_asm.Program.bytes in
+          let halted, mem = run ~origin ~input:(0x8000, n) img.Rivet_i8080_asm.Program.bytes in
           Printf.printf "origin=%04x n=%d halted=%b result=%d expect=%d\n" origin n halted
             (Char.code (Bytes.get mem 0x8001))
             (n * (n + 1) / 2 land 0xff))
@@ -320,7 +324,7 @@ let%expect_test "a recursive program runs to HLT and leaves its result in RAM" =
     origin=4000 n=22 halted=true result=253 expect=253 |}]
 
 let%expect_test "a table of addresses resolves" =
-  let open I8080_asm in
+  let open Rivet_i8080_asm in
   let prog =
     [
       insn (lhld_e (symbol "ptr"));
@@ -343,7 +347,7 @@ let%expect_test "a table of addresses resolves" =
 (* The Items module: the same builders returning program items, so a program is a plain list. *)
 let%expect_test "Items builds the same programs as insn" =
   let a =
-    let open I8080_asm in
+    let open Rivet_i8080_asm in
     [
       insn (lxi sp 0xf000);
       insn (mvi b 3);
@@ -358,7 +362,7 @@ let%expect_test "Items builds the same programs as insn" =
       insn (hlt ());
     ]
   and b =
-    let open I8080_asm.Items in
+    let open Rivet_i8080_asm.Items in
     [
       lxi sp 0xf000;
       mvi b 3;
@@ -383,7 +387,7 @@ let%expect_test "Items builds the same programs as insn" =
 
 let%expect_test "Items builds a sample of every operand class" =
   (* the previous test compares whole programs; this one assembles one of each shape *)
-  let open I8080_asm.Items in
+  let open Rivet_i8080_asm.Items in
   let twins =
     [
       nop ();

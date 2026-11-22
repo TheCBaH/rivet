@@ -5,21 +5,21 @@
 ; rejects any dependency on another target or on the driver.
 
 (library
- (name i8080_ops)
+ (name rivet_i8080_ops)
  (public_name rivet.i8080_ops)
- (modules i8080_ops)
+ (modules rivet_i8080_ops)
  (modes byte native)
  (libraries rivet_compute)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080_encode)
+ (name rivet_i8080_encode)
  (public_name rivet.i8080_encode)
- (modules i8080_encode)
+ (modules rivet_i8080_encode)
  (modes byte native)
  (libraries
-  i8080_ops
+  rivet_i8080_ops
   rivet_foundation
   rivet_codec
   rivet_asm_core
@@ -30,9 +30,9 @@
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080)
+ (name rivet_i8080)
  (public_name rivet.i8080)
- (modules i8080)
+ (modules rivet_i8080)
  (modes byte native)
  (libraries
   rivet_foundation
@@ -40,28 +40,28 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  i8080_encode)
+  rivet_i8080_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080_asm)
+ (name rivet_i8080_asm)
  (public_name rivet.i8080_asm)
- (modules i8080_asm)
+ (modules rivet_i8080_asm)
  (modes byte native)
  (libraries
   rivet_foundation
   rivet_asm_core
   rivet_image
   rivet_driver_direct
-  i8080_encode)
+  rivet_i8080_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080_text)
+ (name rivet_i8080_text)
  (public_name rivet.i8080_text)
- (modules i8080_text)
+ (modules rivet_i8080_text)
  (modes byte native)
  (libraries
   rivet_foundation
@@ -69,34 +69,34 @@
   rivet_asm_syntax
   rivet_image
   rivet_text_pipeline
-  i8080
-  i8080_asm)
+  rivet_i8080
+  rivet_i8080_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080_as)
+ (name rivet_i8080_as)
  (public_name rivet.i8080_as)
- (modules i8080_as)
+ (modules rivet_i8080_as)
  (modes byte native)
- (libraries rivet_foundation rivet_asm_core i8080_encode)
+ (libraries rivet_foundation rivet_asm_core rivet_i8080_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080_sem)
+ (name rivet_i8080_sem)
  (public_name rivet.i8080_sem)
- (modules i8080_sem)
+ (modules rivet_i8080_sem)
  (modes byte native)
- (libraries rivet_compute i8080_ops)
+ (libraries rivet_compute rivet_i8080_ops)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name i8080_run)
+ (name rivet_i8080_run)
  (public_name rivet.i8080_run)
- (modules i8080_run)
+ (modules rivet_i8080_run)
  (modes byte native)
- (libraries i8080_sem)
+ (libraries rivet_i8080_sem)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

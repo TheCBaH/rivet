@@ -2,12 +2,12 @@ let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
 
 let show text =
-  match I8080_as.assemble ~file:"t.asm" text with
-  | Error ds -> print_endline (I8080_as.render ds)
+  match Rivet_i8080_as.assemble ~file:"t.asm" text with
+  | Error ds -> print_endline (Rivet_i8080_as.render ds)
   | Ok img ->
       List.iter
-        (fun (s : I8080_as.segment) -> Printf.printf "%04x: %s\n" s.origin (hex s.bytes))
-        img.I8080_as.segments
+        (fun (s : Rivet_i8080_as.segment) -> Printf.printf "%04x: %s\n" s.origin (hex s.bytes))
+        img.Rivet_i8080_as.segments
 
 let%expect_test "literals: NNh, NNb, 0x, $NN, decimal, characters" =
   show {|	org 0
@@ -94,16 +94,16 @@ let%expect_test "macro errors name the expansion" =
   [%expect {| t.asm:2 (in m from line 5): mvi operand 300 does not fit -128..255 |}]
 
 let%expect_test "gaps and the listing map" =
-  (match I8080_as.assemble ~file:"t.asm" {|	org 0
+  (match Rivet_i8080_as.assemble ~file:"t.asm" {|	org 0
 	nop
 	org 4
 lab:	mvi a,lab
 	db 1
 |} with
   | Ok img ->
-      let origin, bytes = I8080_as.flatten img in
-      Printf.printf "%04x: %s\n%s\n" origin (hex bytes) (I8080_as.listing_to_string img)
-  | Error ds -> print_endline (I8080_as.render ds));
+      let origin, bytes = Rivet_i8080_as.flatten img in
+      Printf.printf "%04x: %s\n%s\n" origin (hex bytes) (Rivet_i8080_as.listing_to_string img)
+  | Error ds -> print_endline (Rivet_i8080_as.render ds));
   [%expect
     {|
     0000: 00 00 00 00 3e 04 01

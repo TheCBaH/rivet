@@ -1,6 +1,6 @@
 (* requires: rivet.i8080_asm *)
 let _ =
-  I8080_asm.
+  Rivet_i8080_asm.
     [
       lxi sp 0xf000;
       mvi a 42;
