@@ -22,6 +22,7 @@
 (library
  (name rivet_x86_32_asm)
  (modules rivet_x86_32_asm x86_asm_rows32)
+ (private_modules x86_asm_rows32)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -36,6 +37,7 @@
 (library
  (name rivet_x86_64_asm)
  (modules rivet_x86_64_asm x86_asm_rows64)
+ (private_modules x86_asm_rows64)
  (modes byte native melange)
  (libraries
   rivet_foundation

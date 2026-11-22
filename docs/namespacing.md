@@ -300,3 +300,16 @@ main module or they stay public; `Grammar` after `parse_lines.mli`. The
 is checked by compiling a consumer against an install
 (`docs/consumers.md`'s vendor-extension example and `test/asm/neg` are the
 existing ones) before it lands.
+
+## Applied (R7)
+
+The 12 private candidates are `private_modules` in both trees. `Riscv_cls`,
+`Riscv_row`, `Riscv_std_rows` and `X86_x87` are re-exported by their main
+modules and stay public; `parse_lines.mli` hides `to_menhir` and `supplier`,
+so `Grammar` is private. The `*_types` units stay public: besides the
+encoders' `include`, the inferred interfaces of `rivet_aarch64_asm`,
+`rivet_arm_asm` and the `x86_asm` builders name them as `Rivet_<lib>__X`.
+`test/asm/neg` compiles the promised paths (`Rivet_image.t`,
+`Rivet_text_pipeline.Pipeline.Make`, `Rivet_target_features.Config.t`, an
+`ENCODE`) and the vendor-extension example against the install, and is
+refused one unit hidden by each new `private_modules`.

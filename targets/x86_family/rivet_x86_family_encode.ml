@@ -23,6 +23,7 @@ open Rivet_foundation
 module C = Rivet_codec
 include X86_types
 module X86_ops = X86_ops
+module X86_x87 = X86_x87
 
 (* The lowered instruction names an *encoding shape*, not a mnemonic:
    [Lowered.Alu_rm_imm] with [ext = 5] is `sub` and with [ext = 0] is `add`,

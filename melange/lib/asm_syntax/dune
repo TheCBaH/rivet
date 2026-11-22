@@ -6,6 +6,7 @@
 
 (library
  (name rivet_asm_syntax)
+ (private_modules grammar)
  (modes byte native melange)
  (libraries rivet_foundation rivet_asm_core rivet_fmt)
  (enabled_if

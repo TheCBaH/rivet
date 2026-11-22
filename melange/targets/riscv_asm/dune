@@ -18,6 +18,7 @@
 (library
  (name rivet_riscv32_asm)
  (modules rivet_riscv32_asm riscv_asm_rows32)
+ (private_modules riscv_asm_rows32)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -30,6 +31,7 @@
 (library
  (name rivet_riscv64_asm)
  (modules rivet_riscv64_asm riscv_asm_rows64)
+ (private_modules riscv_asm_rows64)
  (modes byte native melange)
  (libraries
   rivet_foundation

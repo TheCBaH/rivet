@@ -19,6 +19,7 @@
 (library
  (name rivet_asm_syntax)
  (public_name rivet.asm_syntax)
+ (private_modules grammar)
  (modes byte native)
  (libraries rivet_foundation rivet_asm_core rivet_fmt)
  (enabled_if

@@ -14,6 +14,7 @@
  (name rivet_riscv32_asm)
  (public_name rivet.riscv32_asm)
  (modules rivet_riscv32_asm riscv_asm_rows32)
+ (private_modules riscv_asm_rows32)
  (modes byte native)
  (libraries
   rivet_foundation
@@ -27,6 +28,7 @@
  (name rivet_riscv64_asm)
  (public_name rivet.riscv64_asm)
  (modules rivet_riscv64_asm riscv_asm_rows64)
+ (private_modules riscv_asm_rows64)
  (modes byte native)
  (libraries
   rivet_foundation

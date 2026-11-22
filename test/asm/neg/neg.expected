@@ -25,12 +25,18 @@ i8080_stax_sp: refused, mentions `Sp
 ok_aarch64_asm: compiles
 ok_arm_asm: compiles
 ok_i8080_asm: compiles
+ok_promised_paths: compiles
 ok_riscv32_asm: compiles
 ok_riscv64_asm: compiles
 ok_riscv_asm: compiles
+ok_vendor_extension: compiles
 ok_x86_asm: compiles
 ok_x86_regs: compiles
 ok_xreg: compiles
+private_grammar: refused, mentions Rivet_asm_syntax__Grammar
+private_riscv_ext: refused, mentions Rivet_riscv_family_encode__Riscv_ext_v
+private_riscv_rows: refused, mentions Rivet_riscv64_asm__Riscv_asm_rows64
+private_x86_rows: refused, mentions Rivet_x86_64_asm__X86_asm_rows64
 rv32_asm_fadd_s_on_xregs: refused, mentions Freg
 rv32_asm_vadd_on_xreg: refused, mentions Vreg
 rv32_has_no_ld: refused, mentions ld

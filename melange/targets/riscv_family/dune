@@ -30,6 +30,15 @@
   riscv_overlap
   riscv_table_row
   riscv_table_rows)
+ (private_modules
+  riscv_ext
+  riscv_ext_a
+  riscv_ext_b
+  riscv_ext_c
+  riscv_ext_fd
+  riscv_ext_fp
+  riscv_ext_sys
+  riscv_ext_v)
  (modes byte native melange)
  (libraries
   rivet_foundation
