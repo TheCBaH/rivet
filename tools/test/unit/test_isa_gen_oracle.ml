@@ -70,10 +70,14 @@ let test_x86_empty_bytes () =
 let no_relocations_output = "radd.o:     file format elf32-littleriscv\n\n"
 
 let call_relocation_output =
-  "rcall.o:     file format elf32-littleriscv\n\n\
-   RELOCATION RECORDS FOR [.text]:\n\
-   OFFSET   TYPE              VALUE\n\
-   00000000 R_RISCV_CALL_PLT  foo\n\n\n"
+  {|rcall.o:     file format elf32-littleriscv
+
+RELOCATION RECORDS FOR [.text]:
+OFFSET   TYPE              VALUE
+00000000 R_RISCV_CALL_PLT  foo
+
+
+|}
 
 let test_has_text_relocations_false_when_none () =
   check "no RELOCATION RECORDS banner means no .text relocations"

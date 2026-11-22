@@ -8,17 +8,18 @@
    check that this extraction changed nothing about its output. *)
 
 let multi_segment_source =
-  "\t.text\n\
-   \t.globl start\n\
-   start:\n\
-   \tmovl $1, %eax\n\
-   \tret\n\
-   \t.data\n\
-   g:\n\
-   \t.long 42\n\
-   \t.bss\n\
-   b:\n\
-   \t.zero 8\n"
+  {|	.text
+	.globl start
+start:
+	movl $1, %eax
+	ret
+	.data
+g:
+	.long 42
+	.bss
+b:
+	.zero 8
+|}
 
 let summarize (m : Driver.Portable.manifest) : string =
   let buf = Buffer.create 256 in

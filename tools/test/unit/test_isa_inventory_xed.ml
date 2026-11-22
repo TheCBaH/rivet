@@ -26,13 +26,14 @@ let mnemonics entries = List.map (fun (e : Isa_inventory_xed.entry) -> e.mnemoni
 (* The "generated" dialect: one PATTERN per block, tight ICLASS gutter. *)
 let test_parse_generated_dialect () =
   let text =
-    "{\n\
-     ICLASS:      VPDPBUSD\n\
-     CATEGORY:    VEX\n\
-     EXTENSION:   AVX_VNNI\n\
-     PATTERN:    VV1 0x50 V66 V0F38 MOD[0b11] MOD=3\n\
-     OPERANDS:    REG0=XMM_R():rw:dq:i32\n\
-     }\n"
+    {|{
+ICLASS:      VPDPBUSD
+CATEGORY:    VEX
+EXTENSION:   AVX_VNNI
+PATTERN:    VV1 0x50 V66 V0F38 MOD[0b11] MOD=3
+OPERANDS:    REG0=XMM_R():rw:dq:i32
+}
+|}
   in
   match Isa_inventory_xed.parse_datafile ~extension:"avx-vnni" text with
   | Error _ -> check "generated_dialect succeeds" false
@@ -45,15 +46,17 @@ let test_parse_generated_dialect () =
    ICLASS, wide gutter, blank lines inside the block. *)
 let test_parse_hand_authored_dialect () =
   let text =
-    "{\n\
-     ICLASS    : VADDPD\n\
-     EXCEPTIONS: avx-type-2\n\
-     CATEGORY  : AVX\n\
-     PATTERN : VV1 0x58  V66 VL128 V0F MOD[mm] MOD!=3\n\
-     OPERANDS  : REG0=XMM_R():w:dq:f64 MEM0:r:dq:f64\n\n\
-     PATTERN : VV1 0x58  V66 VL256 V0F MOD[0b11] MOD=3\n\
-     OPERANDS  : REG0=YMM_R():w:qq:f64 REG2=YMM_B():r:qq:f64\n\
-     }\n"
+    {|{
+ICLASS    : VADDPD
+EXCEPTIONS: avx-type-2
+CATEGORY  : AVX
+PATTERN : VV1 0x58  V66 VL128 V0F MOD[mm] MOD!=3
+OPERANDS  : REG0=XMM_R():w:dq:f64 MEM0:r:dq:f64
+
+PATTERN : VV1 0x58  V66 VL256 V0F MOD[0b11] MOD=3
+OPERANDS  : REG0=YMM_R():w:qq:f64 REG2=YMM_B():r:qq:f64
+}
+|}
   in
   match Isa_inventory_xed.parse_datafile ~extension:"avx" text with
   | Error _ -> check "hand_authored_dialect succeeds" false
@@ -93,14 +96,16 @@ let test_parse_longmode_without_mode_token () =
    correction). *)
 let test_parse_mode16_and_mode32_only_excludes_64 () =
   let text =
-    "{\n\
-     ICLASS: PUSHA\n\
-     EXTENSION: BASE\n\
-     PATTERN: 0x60 mode16 no66_prefix\n\
-     OPERANDS: REG0=XED_REG_AX:r:SUPP\n\n\
-     PATTERN: 0x60 mode32 66_prefix\n\
-     OPERANDS: REG0=XED_REG_AX:r:SUPP\n\
-     }\n"
+    {|{
+ICLASS: PUSHA
+EXTENSION: BASE
+PATTERN: 0x60 mode16 no66_prefix
+OPERANDS: REG0=XED_REG_AX:r:SUPP
+
+PATTERN: 0x60 mode32 66_prefix
+OPERANDS: REG0=XED_REG_AX:r:SUPP
+}
+|}
   in
   match Isa_inventory_xed.parse_datafile ~extension:"base" text with
   | Error _ -> check "mode16_and_mode32_only succeeds" false
@@ -113,14 +118,16 @@ let test_parse_mode16_and_mode32_only_excludes_64 () =
    PATTERNs for the SAME mode exclusion, not one exclusion per PATTERN. *)
 let test_parse_mixed_restrictions_same_direction () =
   let text =
-    "{\n\
-     ICLASS: MONITORX\n\
-     EXTENSION: MONITORX\n\
-     PATTERN: 0x0F 0x01 not64 eamode32\n\
-     OPERANDS: REG0=XED_REG_EAX:r:SUPP\n\n\
-     PATTERN: 0x0F 0x01 not64 eamode16\n\
-     OPERANDS: REG0=XED_REG_EAX:r:SUPP\n\
-     }\n"
+    {|{
+ICLASS: MONITORX
+EXTENSION: MONITORX
+PATTERN: 0x0F 0x01 not64 eamode32
+OPERANDS: REG0=XED_REG_EAX:r:SUPP
+
+PATTERN: 0x0F 0x01 not64 eamode16
+OPERANDS: REG0=XED_REG_EAX:r:SUPP
+}
+|}
   in
   match Isa_inventory_xed.parse_datafile ~extension:"monitorx" text with
   | Error _ -> check "mixed_restrictions succeeds" false
@@ -144,12 +151,14 @@ let test_parse_block_without_iclass_is_skipped () =
 
 let test_parse_comments_and_blank_lines_between_blocks () =
   let text =
-    "# EMITTING VPDPBUSD (VPDPBUSD-128-2)\n\
-     AVX_INSTRUCTIONS()::\n\n\
-     {\n\
-     ICLASS: ADD\n\
-     PATTERN: 0x00\n\
-     }\n"
+    {|# EMITTING VPDPBUSD (VPDPBUSD-128-2)
+AVX_INSTRUCTIONS()::
+
+{
+ICLASS: ADD
+PATTERN: 0x00
+}
+|}
   in
   match Isa_inventory_xed.parse_datafile ~extension:"base" text with
   | Error _ -> check "comments_between_blocks succeeds" false

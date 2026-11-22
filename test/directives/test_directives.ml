@@ -134,14 +134,15 @@ let show_segments src =
 
 let%expect_test "permissions come from the flag string" =
   show_segments
-    ".section .text.startup,\"ax\",@progbits\n\
-     .byte 1\n\
-     .section .mydata,\"aw\",@progbits\n\
-     .byte 2\n\
-     .section .rodata,\"aw\"\n\
-     .byte 3\n\
-     .section .xyz,\"a\"\n\
-     .byte 4\n";
+    {|.section .text.startup,"ax",@progbits
+.byte 1
+.section .mydata,"aw",@progbits
+.byte 2
+.section .rodata,"aw"
+.byte 3
+.section .xyz,"a"
+.byte 4
+|};
   [%expect
     {|
     x86_64: .text r-x a1 01+0 .mydata rw- a1 02+0 .rodata rw- a1 03+0 .xyz r-- a1 04+0
@@ -163,12 +164,13 @@ let%expect_test "an executable custom section is NOP-filled" =
 
 let%expect_test "NOBITS is inferred from a .bss or .tbss name when no type is given" =
   show_segments
-    ".section .bss.x\n\
-     .zero 4\n\
-     .section .tbss.y\n\
-     .zero 8\n\
-     .section .bss.z,\"aw\",@progbits\n\
-     .zero 2\n";
+    {|.section .bss.x
+.zero 4
+.section .tbss.y
+.zero 8
+.section .bss.z,"aw",@progbits
+.zero 2
+|};
   [%expect
     {|
     x86_64: .bss rw- a1 +4 .tbss.y rw- a1 +8 .bss.z rw- a1 0000+0
@@ -403,24 +405,25 @@ let%expect_test ".globl, .weak and .local take lists; visibility is recorded" =
 
 let%expect_test "the section stack" =
   show_segments
-    ".text\n\
-     .byte 1\n\
-     .pushsection .data,\"aw\"\n\
-     .byte 2\n\
-     .popsection\n\
-     .byte 3\n\
-     .section .rodata,\"a\"\n\
-     .byte 9\n\
-     .previous\n\
-     .byte 4\n\
-     .pushsection .rodata,\"a\"\n\
-     .byte 8\n\
-     .pushsection .data,\"aw\"\n\
-     .byte 7\n\
-     .popsection\n\
-     .byte 6\n\
-     .popsection\n\
-     .byte 5\n";
+    {|.text
+.byte 1
+.pushsection .data,"aw"
+.byte 2
+.popsection
+.byte 3
+.section .rodata,"a"
+.byte 9
+.previous
+.byte 4
+.pushsection .rodata,"a"
+.byte 8
+.pushsection .data,"aw"
+.byte 7
+.popsection
+.byte 6
+.popsection
+.byte 5
+|};
   List.iter
     (fun src -> print_endline (first_error src "x86_64"))
     [
@@ -472,17 +475,17 @@ let high_program = function
       ".text\n.globl entry\nentry:\n\tcall f\n\tret\nf:\n\tret\n.data\n.quad f\n.quad f - entry\n"
   | "aarch64" ->
       ".text\n.globl entry\nentry:\n\tbl f\n\tret\nf:\n\tret\n.data\n.quad f\n.quad f - entry\n"
-  | _ ->
-      ".text\n\
-       .globl entry\n\
-       entry:\n\
-       \tjal ra, f\n\
-       \tret\n\
-       f:\n\
-       \tret\n\
-       .data\n\
-       .quad f\n\
-       .quad f - entry\n"
+  | _ -> {|.text
+.globl entry
+entry:
+	jal ra, f
+	ret
+f:
+	ret
+.data
+.quad f
+.quad f - entry
+|}
 
 let%expect_test "a program binds at 0xffff800000000000, code and data alike" =
   List.iter

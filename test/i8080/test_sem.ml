@@ -39,18 +39,19 @@ let%expect_test "the MVI/STA/HLT fixture: 27 T-states and one write" =
 let%expect_test "arithmetic flags, DAA and the flag byte" =
   let st =
     run
-      "\torg 0\n\
-       \tmvi a,99h\n\
-       \tadi 01h\n\
-       \tdaa\n\
-       \tpush psw\n\
-       \tpop b\n\
-       \tmvi a,7fh\n\
-       \tadi 1\n\
-       \tsta 100h\n\
-       \tmvi a,0\n\
-       \tsui 1\n\
-       \thlt\n"
+      {|	org 0
+	mvi a,99h
+	adi 01h
+	daa
+	push psw
+	pop b
+	mvi a,7fh
+	adi 1
+	sta 100h
+	mvi a,0
+	sui 1
+	hlt
+|}
   in
   show st;
   [%expect {| a=ff f=87 b=00 c=57 h=00 l=00 sp=0000 pc=0013 t=87 n=11 |}]

@@ -19,38 +19,54 @@
 
 let source = function
   | Target.X86_32 ->
-      "\t.text\n\
-       \t.globl _start\n\
-       _start:\n\
-       \tmovl\t$252, %eax\t/* exit_group */\n\
-       \tmovl\t$11, %ebx\n\
-       \tint\t$0x80\n"
+      {|	.text
+	.globl _start
+_start:
+	movl	$252, %eax	/* exit_group */
+	movl	$11, %ebx
+	int	$0x80
+|}
   | Target.X86_64 ->
-      "\t.text\n\
-       \t.globl _start\n\
-       _start:\n\
-       \tmovq\t$231, %rax\t/* exit_group */\n\
-       \tmovq\t$12, %rdi\n\
-       \tsyscall\n"
+      {|	.text
+	.globl _start
+_start:
+	movq	$231, %rax	/* exit_group */
+	movq	$12, %rdi
+	syscall
+|}
   | Target.Arm ->
-      "\t.syntax unified\n\
-       \t.arch armv7-a\n\
-       \t.arm\n\
-       \t.text\n\
-       \t.globl _start\n\
-       _start:\n\
-       \tmov\tr7, #248\t@ exit_group\n\
-       \tmov\tr0, #13\n\
-       \tsvc\t#0\n"
+      {|	.syntax unified
+	.arch armv7-a
+	.arm
+	.text
+	.globl _start
+_start:
+	mov	r7, #248	@ exit_group
+	mov	r0, #13
+	svc	#0
+|}
   | Target.Aarch64 ->
-      "\t.text\n\
-       \t.globl _start\n\
-       _start:\n\
-       \tmov\tx8, #94\t\t// exit_group\n\
-       \tmov\tx0, #14\n\
-       \tsvc\t#0\n"
-  | Target.Riscv32 -> "\t.text\n\t.globl _start\n_start:\n\tli a7, 94\n\tli a0, 15\n\tecall\n"
-  | Target.Riscv64 -> "\t.text\n\t.globl _start\n_start:\n\tli a7, 94\n\tli a0, 16\n\tecall\n"
+      {|	.text
+	.globl _start
+_start:
+	mov	x8, #94		// exit_group
+	mov	x0, #14
+	svc	#0
+|}
+  | Target.Riscv32 -> {|	.text
+	.globl _start
+_start:
+	li a7, 94
+	li a0, 15
+	ecall
+|}
+  | Target.Riscv64 -> {|	.text
+	.globl _start
+_start:
+	li a7, 94
+	li a0, 16
+	ecall
+|}
 
 let expected_status = function
   | Target.X86_32 -> 11

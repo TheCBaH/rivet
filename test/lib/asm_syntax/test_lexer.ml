@@ -92,17 +92,19 @@ let tokens text =
 
 let%expect_test "a leading $ names a symbol outside operand position" =
   tokens
-    "\t.globl $3\n\
-     $3:\tmovl $12, %eax\n\
-     \tmovl %eax, ($1)(%rip)\n\
-     \tmovl $1+$2, %edi\n\
-     \tcall ($3)\n\
-     lock addl $1, (%rax)\n\
-     .L1: $4: pushq $5\n\
-     \t.long $1, $3+4\n\
-     $5 = $2\n\
-     \t{evex} vcmpps $1, {sae}, %zmm1, %zmm2, %k1\n\
-     \tmovl $(1+2), %eax; movl $$1, %eax\n";
+    {|
+      .globl $3
+    $3: movl $12, %eax
+      movl %eax, ($1)(%rip)
+      movl $1+$2, %edi
+      call ($3)
+      lock addl $1, (%rax)
+    .L1: $4: pushq $5
+      .long $1, $3+4
+    $5 = $2
+      {evex} vcmpps $1, {sae}, %zmm1, %zmm2, %k1
+      movl $(1+2), %eax; movl $$1, %eax
+|};
   [%expect
     {|
     directive(.globl) ident($3)

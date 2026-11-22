@@ -87,13 +87,17 @@ let%expect_test "a vendor row reads back from its GNU print" =
     match Target_config.parse_spec "+xfoo" with Ok s -> Some s | Error m -> failwith m
   in
   let source =
-    "\t.text\n\
-     1:\txfoo a0, a1, a2\n\
-     \tbnez a0, 1b\n\
-     \tlui a1, %hi(far + 4)\n\
-     \tlw a2, %lo(far + 4)(a1)\n\
-     \tcall far\n\
-     far:\tret\n"
+    {|
+      .text
+    1:
+      xfoo a0, a1, a2
+      bnez a0, 1b
+      lui a1, %hi(far + 4)
+      lw a2, %lo(far + 4)(a1)
+      call far
+    far:
+      ret
+|}
   in
   let src = Foundation.Span.source ~name:"v.s" ~contents:source in
   let text =
@@ -153,13 +157,29 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
     ~type_char:'@'
     ~simplify:(simplify_with X.parse (fun ~state m -> X.simplify ~state m) X86_64.default_state)
     ~instruction:X86_64.Instruction.pp_gnu
-    "\t.text\n1:\tnop\n\tjmp 1b\n\tleaq 1f(%rip), %rax\n1:\tret\n";
+    {|
+      .text
+    1:
+      nop
+      jmp 1b
+      leaq 1f(%rip), %rax
+    1:
+      ret
+|};
   check
     (module A)
     ~type_char:'%'
     ~simplify:(simplify_with A.parse (fun ~state m -> A.simplify ~state m) Aarch64.default_state)
     ~instruction:Aarch64.Instruction.pp_gnu
-    "\t.text\n1:\tadd x0, x0, #1\n\tb 1b\n\tcbz x0, 1f\n1:\tret\n";
+    {|
+      .text
+    1:
+      add x0, x0, #1
+      b 1b
+      cbz x0, 1f
+    1:
+      ret
+|};
   [%expect
     {|
     	.section	.text,"ax",@progbits
@@ -206,27 +226,35 @@ let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
     ~parse:X64.parse
     ~simplify:(fun ~state m -> X64.simplify ~state m)
     ~state:X86_64.default_state ~instruction:X86_64.Instruction.pp_gnu
-    "\t.text\n\
-     \t.globl $3\n\
-     $3:\tmovl %eax, ($1)(%rip)\n\
-     \tleaq ($1)+4(%rip), %rax\n\
-     \tmovl $1+$1, %ecx\n\
-     \tcall ($3)\n\
-     \tjmp ($3)\n\
-     $1:\tret\n";
+    {|
+      .text
+      .globl $3
+    $3:
+      movl %eax, ($1)(%rip)
+      leaq ($1)+4(%rip), %rax
+      movl $1+$1, %ecx
+      call ($3)
+      jmp ($3)
+    $1:
+      ret
+|};
   check
     (module X32)
     ~parse:X32.parse
     ~simplify:(fun ~state m -> X32.simplify ~state m)
     ~state:X86_32.default_state ~instruction:X86_32.Instruction.pp_gnu
-    "\t.text\n\
-     \t.globl $3\n\
-     $3:\tmovl %eax, ($1)\n\
-     \tmovl ($1)+4, %eax\n\
-     \tmovl $$1, %edx\n\
-     \tpushl $$3\n\
-     \tcall ($3)\n\
-     $1:\tret\n";
+    {|
+      .text
+      .globl $3
+    $3:
+      movl %eax, ($1)
+      movl ($1)+4, %eax
+      movl $$1, %edx
+      pushl $$3
+      call ($3)
+    $1:
+      ret
+|};
   [%expect
     {|
     	.section	.text,"ax",@progbits

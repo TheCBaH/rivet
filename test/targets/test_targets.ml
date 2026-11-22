@@ -464,14 +464,15 @@ let text_hex_of target text =
 
 let%expect_test "a compressed instruction and a 32-bit instruction pack with no inserted padding" =
   let text =
-    ".text\n\
-     .option rvc\n\
-     c.addi a0, 1\n\
-     .option norvc\n\
-     sw a0, 0(a1)\n\
-     add a2, a0, a1\n\
-     .option rvc\n\
-     c.addi a0, -1\n"
+    {|.text
+.option rvc
+c.addi a0, 1
+.option norvc
+sw a0, 0(a1)
+add a2, a0, a1
+.option rvc
+c.addi a0, -1
+|}
   in
   Printf.printf "riscv32: %s\n" (text_hex_of "riscv32" text);
   Printf.printf "riscv64: %s\n" (text_hex_of "riscv64" text);
@@ -700,15 +701,16 @@ let entry_of ?entry target text =
       | Ok img -> Some img.Image.entry)
 
 let two_globals =
-  "\t.text\n\
-   \t.globl callee\n\
-   \t.type callee, @function\n\
-   callee:\n\
-   \tret\n\
-   \t.globl asm_test_entry\n\
-   \t.type asm_test_entry, @function\n\
-   asm_test_entry:\n\
-   \tret\n"
+  {|	.text
+	.globl callee
+	.type callee, @function
+callee:
+	ret
+	.globl asm_test_entry
+	.type asm_test_entry, @function
+asm_test_entry:
+	ret
+|}
 
 let%expect_test "an explicit entry survives erasure; without one, two globals name nothing" =
   let show label e =
@@ -1160,15 +1162,16 @@ let%expect_test "vmov.f32/f64 with a scientific-notation immediate" =
    against real [as]/[objdump]: [e49d4004], not the LDM form this decodes). *)
 let%expect_test "stmia/ldmia Rn!, {reglist}, and pop's own sp-based alias" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tstmia r3!, {r0, r1}\n\
-     \tldmia r3!, {r0, r1}\n\
-     \tpop {r0, r1}\n\
-     \tpop {r0, r1, r2, r3}\n\
-     \tpop {r0, r4, r7, lr}\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	stmia r3!, {r0, r1}
+	ldmia r3!, {r0, r1}
+	pop {r0, r1}
+	pop {r0, r1, r2, r3}
+	pop {r0, r4, r7, lr}
+	bx lr
+|};
   [%expect
     {|
     40000000  03 00 a3 e8  stmia r3!, {r0, r1}   [arm.ldm]
@@ -1199,15 +1202,16 @@ let%expect_test "pop needs two or more registers; one register is out of scope" 
                                        high half) *)
 let%expect_test "vpush.64 {dN-dM} and {dN, dM} both lower to the identical VSTM-class encoding" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tvpush.64 {d8-d9}\n\
-     \tvpush.64 {d8, d9}\n\
-     \tvpush.64 {d8-d10}\n\
-     \tvpush.64 {d8}\n\
-     \tvpush.64 {d16-d17}\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	vpush.64 {d8-d9}
+	vpush.64 {d8, d9}
+	vpush.64 {d8-d10}
+	vpush.64 {d8}
+	vpush.64 {d16-d17}
+	bx lr
+|};
   [%expect
     {|
     40000000  04 8b 2d ed  vpush.64 {d8, d9}       [arm.vpush]
@@ -1249,14 +1253,15 @@ let%expect_test "vpush.64 needs a non-empty, contiguous, ascending D-register li
      ee300ac1  vsub.f32 s0, s1, s2 *)
 let%expect_test "vadd/vsub/vmul/vdiv.f32 share the .f64 family's V3 lowering, over S registers" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tvmul.f32 s24, s26, s6\n\
-     \tvdiv.f32 s24, s26, s6\n\
-     \tvadd.f32 s0, s1, s2\n\
-     \tvsub.f32 s0, s1, s2\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	vmul.f32 s24, s26, s6
+	vdiv.f32 s24, s26, s6
+	vadd.f32 s0, s1, s2
+	vsub.f32 s0, s1, s2
+	bx lr
+|};
   [%expect
     {|
     40000000  03 ca 2d ee  vmul.f32 s24, s26, s6  [arm.v3-s]
@@ -1296,18 +1301,19 @@ let%expect_test "vadd/vsub/vmul/vdiv.f32 share the .f64 family's V3 lowering, ov
    identical word. *)
 let%expect_test "vldr Dd/Sd, label (PC-relative literal-pool load)" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tvldr s0, .L1\n\
-     \tvldr d1, .L2\n\
-     \tbx lr\n\
-     \tnop\n\
-     .L2:\n\
-     \t.word 0\n\
-     \t.word 0\n\
-     .L1:\n\
-     \t.word 0\n";
+    {|	.text
+	.globl f
+f:
+	vldr s0, .L1
+	vldr d1, .L2
+	bx lr
+	nop
+.L2:
+	.word 0
+	.word 0
+.L1:
+	.word 0
+|};
   [%expect
     {|
     40000000  04 0a 9f ed  vldr s0, [pc, #16]  [arm.vmem-s]
@@ -1373,17 +1379,18 @@ let%expect_test "vstr to a bare label is not in scope (only vldr's literal form 
      e3e00000  mvn r0, #0 *)
 let%expect_test "eor/rsb/orr/mvn share add/sub/and/mov's own data-processing lowering" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \teor r0, r1, r2\n\
-     \trsb r0, r1, #1\n\
-     \trsb r0, r1, r2, lsl #1\n\
-     \torr r0, r1, r2\n\
-     \torr r0, r1, r2, lsl #8\n\
-     \tmvn r0, r1\n\
-     \tmvn r0, #0\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	eor r0, r1, r2
+	rsb r0, r1, #1
+	rsb r0, r1, r2, lsl #1
+	orr r0, r1, r2
+	orr r0, r1, r2, lsl #8
+	mvn r0, r1
+	mvn r0, #0
+	bx lr
+|};
   [%expect
     {|
     40000000  02 00 21 e0  eor r0, r1, r2          [arm.dp-reg]
@@ -1415,15 +1422,16 @@ let%expect_test "eor/rsb/orr/mvn share add/sub/and/mov's own data-processing low
      e320f000  nop *)
 let%expect_test "lsl/lsr/asr/ror rd, rm, rs (register shift amount), and nop" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tlsl r0, r1, r2\n\
-     \tlsr r0, r1, r2\n\
-     \tasr r0, r1, r2\n\
-     \tror r0, r1, r2\n\
-     \tnop\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	lsl r0, r1, r2
+	lsr r0, r1, r2
+	asr r0, r1, r2
+	ror r0, r1, r2
+	nop
+	bx lr
+|};
   [%expect
     {|
     40000000  11 02 a0 e1  lsl r0, r1, r2  [arm.shift-reg]
@@ -1474,16 +1482,17 @@ let%expect_test "lsl/lsr/asr/ror rd, rm, #imm (immediate shift amount)" =
      e0910002  adds r0, r1, r2 *)
 let%expect_test "eor/orr/bic's three-operand immediate form, bic's register form, adc, and adds" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \teor r0, r12, #98\n\
-     \torr r0, r12, #1\n\
-     \tbic r3, r0, #16711680\n\
-     \tbic r1, r3, r12\n\
-     \tadc r10, r4, r12\n\
-     \tadds r0, r1, r2\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	eor r0, r12, #98
+	orr r0, r12, #1
+	bic r3, r0, #16711680
+	bic r1, r3, r12
+	adc r10, r4, r12
+	adds r0, r1, r2
+	bx lr
+|};
   [%expect
     {|
     40000000  62 00 2c e2  eor r0, ip, #98        [arm.dp-imm]
@@ -1517,15 +1526,16 @@ let%expect_test "eor/orr/bic's three-operand immediate form, bic's register form
      e0c11004  sbc r1, r1, r4 *)
 let%expect_test "cmn, subs, rsbs, orrs, and sbc" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tcmn r2, #52\n\
-     \tsubs r0, r0, r4\n\
-     \trsbs r3, r2, #32\n\
-     \torrs r6, r2, r3\n\
-     \tsbc r1, r1, r4\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	cmn r2, #52
+	subs r0, r0, r4
+	rsbs r3, r2, #32
+	orrs r6, r2, r3
+	sbc r1, r1, r4
+	bx lr
+|};
   [%expect
     {|
     40000000  34 00 72 e3  cmn r2, #52       [arm.dp-imm]
@@ -1645,18 +1655,19 @@ let%expect_test "pp_gnu spells instructions both GNU as and the text parser read
    writes [imulq $132, %r8, %rdi] as the imm32 form; reading 0x84 as imm8 is -124. *)
 let%expect_test "three-operand imul picks the rung whose immediate reads back" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \timulq $132, %r8, %rdi\n\
-     \timull $200, %eax, %ecx\n\
-     \timulq $127, %r8, %rdi\n\
-     \timulq $-128, %r8, %rdi\n\
-     \timulq $-129, %r8, %rdi\n\
-     \timull $4294967295, %eax, %ecx\n\
-     \timulq $2147483647, %r8, %rdi\n\
-     \timulw $200, %ax, %cx\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	imulq $132, %r8, %rdi
+	imull $200, %eax, %ecx
+	imulq $127, %r8, %rdi
+	imulq $-128, %r8, %rdi
+	imulq $-129, %r8, %rdi
+	imull $4294967295, %eax, %ecx
+	imulq $2147483647, %r8, %rdi
+	imulw $200, %ax, %cx
+	ret
+|};
   [%expect
     {|
     40000000  49 69 f8 84 00 00 00  imulq $132, %r8, %rdi         [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
@@ -1762,14 +1773,15 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
    REX on both the register and the r/m operand. *)
 let%expect_test "%r8w-%r15w and 16-bit mov: register-memory, register-register, no/with REX" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovw %r8w, 58(%rsp)\n\
-     \tmovw %ax, 4(%rbx)\n\
-     \tmovw %cx, %dx\n\
-     \tmovw %r9w, %r10w\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movw %r8w, 58(%rsp)
+	movw %ax, 4(%rbx)
+	movw %cx, %dx
+	movw %r9w, %r10w
+	ret
+|};
   [%expect
     {|
     40000000  66 44 89 44 24 3a  movw %r8w, 58(%rsp)  [x86_64.mov-rm-r.asz-absent.opsz-present.rex-present.sib-disp8]
@@ -1795,44 +1807,45 @@ let%expect_test "16-bit ALU forms other than mov are generated rows" =
    2.44's for the same line. *)
 let%expect_test "x86 pseudo-prefixes select the encoding" =
   disasm "x86_64"
-    "\t.text\n\
-     \t{evex} vaddps %xmm1, %xmm2, %xmm3\n\
-     \t{vex} vpdpbusd %xmm1, %xmm2, %xmm3\n\
-     \tvpdpbusd %xmm1, %xmm2, %xmm3\n\
-     \t{store} movaps %xmm1, %xmm2\n\
-     \t{load} addl %eax, %ebx\n\
-     \trep movsw\n\
-     \tvaddps {rn-sae}, %zmm1, %zmm2, %zmm3\n\
-     \tvcmpps $1, {sae}, %zmm1, %zmm2, %k1\n\
-     \tvcvtsi2ss %eax, {rz-sae}, %xmm1, %xmm2\n\
-     \tvaddps %zmm1, %zmm2, %zmm3{%k2}{z}\n\
-     \tvmovups %zmm0, 64(%rax){%k3}\n\
-     \tvgatherdps 16(%rax,%zmm2,4), %zmm3{%k1}\n\
-     \tvaddps %zmm17, %zmm22, %zmm31\n\
-     \tvpgatherdd 16(%rax,%zmm18,4), %zmm29{%k1}\n\
-     \tadcl %eax, %ebx, %ecx\n\
-     \t{nf} addq $1000, 16(%rsp), %rdx\n\
-     \t{evex} tzcnt %eax, %ebx\n\
-     \t{nf} shlb $1, %cl\n\
-     \tccmpz {dfv=of,cf} %eax, %ebx\n\
-     \tlock addw $1, (%rax)\n\
-     \tlock cmpxchg16b (%rax)\n\
-     \tpavgusb 16(%rsp), %mm3\n\
-     \taddl %r17d, %r18d, %r19d\n\
-     \taddl (%r20,%r21,4), %r22d, %r23d\n\
-     \tmovq (%r16), %r17\n\
-     \tpushq %r20\n\
-     \tmovzbl %r17b, %eax\n\
-     \tvaddps 4(%rax){1to8}, %ymm1, %ymm2{%k1}{z}\n\
-     \tvfpclassbf16 $0, 16(%rsp){1to8}, %k1\n\
-     \tnop\n\
-     \tint $3\n\
-     \tendbr64\n\
-     \t{load} addl %eax, %ebx, %ecx\n\
-     \t{evex} {load} addl %eax, %ebx\n\
-     \tloop 1f\n\
-     \tjrcxz 1f\n\
-     \t1:\n";
+    {|	.text
+	{evex} vaddps %xmm1, %xmm2, %xmm3
+	{vex} vpdpbusd %xmm1, %xmm2, %xmm3
+	vpdpbusd %xmm1, %xmm2, %xmm3
+	{store} movaps %xmm1, %xmm2
+	{load} addl %eax, %ebx
+	rep movsw
+	vaddps {rn-sae}, %zmm1, %zmm2, %zmm3
+	vcmpps $1, {sae}, %zmm1, %zmm2, %k1
+	vcvtsi2ss %eax, {rz-sae}, %xmm1, %xmm2
+	vaddps %zmm1, %zmm2, %zmm3{%k2}{z}
+	vmovups %zmm0, 64(%rax){%k3}
+	vgatherdps 16(%rax,%zmm2,4), %zmm3{%k1}
+	vaddps %zmm17, %zmm22, %zmm31
+	vpgatherdd 16(%rax,%zmm18,4), %zmm29{%k1}
+	adcl %eax, %ebx, %ecx
+	{nf} addq $1000, 16(%rsp), %rdx
+	{evex} tzcnt %eax, %ebx
+	{nf} shlb $1, %cl
+	ccmpz {dfv=of,cf} %eax, %ebx
+	lock addw $1, (%rax)
+	lock cmpxchg16b (%rax)
+	pavgusb 16(%rsp), %mm3
+	addl %r17d, %r18d, %r19d
+	addl (%r20,%r21,4), %r22d, %r23d
+	movq (%r16), %r17
+	pushq %r20
+	movzbl %r17b, %eax
+	vaddps 4(%rax){1to8}, %ymm1, %ymm2{%k1}{z}
+	vfpclassbf16 $0, 16(%rsp){1to8}, %k1
+	nop
+	int $3
+	endbr64
+	{load} addl %eax, %ebx, %ecx
+	{evex} {load} addl %eax, %ebx
+	loop 1f
+	jrcxz 1f
+	1:
+|};
   attempt "x86_64" "\t.text\n\t{vex3} vaddps %xmm1, %xmm2, %xmm3\n";
   [%expect
     {|
@@ -1884,15 +1897,16 @@ let%expect_test "x86 pseudo-prefixes select the encoding" =
 let%expect_test
     "or/and/xor in the register-register and mem-source shapes the compiler's own codegen needs" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \torl $128, %r8d\n\
-     \torq %r10, %r11\n\
-     \tandq %rsi, %r14\n\
-     \txorq %rsi, %r9\n\
-     \txorq $255, %rcx\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	orl $128, %r8d
+	orq %r10, %r11
+	andq %rsi, %r14
+	xorq %rsi, %r9
+	xorq $255, %rcx
+	ret
+|};
   [%expect
     {|
     40000000  41 81 c8 80 00 00 00  orl $128, %r8d   [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
@@ -1917,16 +1931,17 @@ let%expect_test "not (group-3, ext=2)" =
    1 still picks the shorter [0xD1] form ([shift1-rm], unchanged from M4). *)
 let%expect_test "the general group-2 shift/rotate forms" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \trorl $27, %eax\n\
-     \tsall $16, %eax\n\
-     \tsall %cl, %eax\n\
-     \tsarl $2, %eax\n\
-     \tshrq $63, %rax\n\
-     \tshrl $1, %eax\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	rorl $27, %eax
+	sall $16, %eax
+	sall %cl, %eax
+	sarl $2, %eax
+	shrq $63, %rax
+	shrl $1, %eax
+	ret
+|};
   [%expect
     {|
     40000000  c1 c8 1b     ror $27, %eax  [x86_64.shift-imm-rm.asz-absent.opsz-absent.rex-absent.reg]
@@ -1951,13 +1966,14 @@ let%expect_test "setcc (0F 90+cc /0, ModR/M reg fixed at 0)" =
    own, structurally different [0x63]. *)
 let%expect_test "movzx/movsx/movslq" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovzbl (%rdi), %ecx\n\
-     \tmovsbl %bl, %edi\n\
-     \tmovslq %eax, %r11\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movzbl (%rdi), %ecx
+	movsbl %bl, %edi
+	movslq %eax, %r11
+	ret
+|};
   [%expect
     {|
     40000000  0f b6 0f  movzbl (%rdi), %ecx  [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-absent.base-disp0]
@@ -1990,14 +2006,15 @@ let%expect_test "the two-operand imul $imm,reg form (0x69/0x6B, short-immediate-
    the fix is additive). *)
 let%expect_test "a width-full hex immediate reduces to its signed value before any rung is picked" =
   disasm "x86_32"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tandl $0xfffffffc, %edx\n\
-     \tandl $-4, %edx\n\
-     \timull $0xfffffff9, %ecx\n\
-     \tpushl $0xfffffffc\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	andl $0xfffffffc, %edx
+	andl $-4, %edx
+	imull $0xfffffff9, %ecx
+	pushl $0xfffffffc
+	ret
+|};
   [%expect
     {|
     40000000  83 e2 fc  andl $-4, %edx   [x86_32.alu-rm-imm8.opsz-absent.reg]
@@ -2069,15 +2086,16 @@ let%expect_test "a negative RIP-relative displacement redisplays with its sign" 
    linearly, and this test cares about the SIB fixup, not what [tbl] holds. *)
 let%expect_test "a base-less SIB operand with a symbolic displacement" =
   disasm "x86_32"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovl tbl(,%eax,4), %eax\n\
-     \tmovl (tbl + 4)(,%ecx,8), %ecx\n\
-     \tret\n\
-     tbl:\n\
-     \tret\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movl tbl(,%eax,4), %eax
+	movl (tbl + 4)(,%ecx,8), %ecx
+	ret
+tbl:
+	ret
+	ret
+|};
   [%expect
     {|
     40000000  8b 04 85 0f 00 00 40  movl 1073741839(,%eax,4), %eax  [x86_32.mov-r-rm.opsz-absent.sib-nobase-disp32]
@@ -2116,15 +2134,16 @@ let%expect_test "an indirect jmp through a base-less SIB jump-table entry" =
    `8b 92 25 00 00 00` respectively, matching this test's bytes exactly. *)
 let%expect_test "a base-only memory operand with a symbolic displacement" =
   disasm "x86_32"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovl tbl(%eax), %eax\n\
-     \tmovl (tbl + 24)(%edx), %edx\n\
-     \tret\n\
-     tbl:\n\
-     \tret\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movl tbl(%eax), %eax
+	movl (tbl + 24)(%edx), %edx
+	ret
+tbl:
+	ret
+	ret
+|};
   [%expect
     {|
     40000000  8b 80 0d 00 00 40  movl 1073741837(%eax), %eax  [x86_32.mov-r-rm.opsz-absent.base-disp32]
@@ -2144,14 +2163,15 @@ let%expect_test "a base-only memory operand with a symbolic displacement" =
 
 let%expect_test "one binop per mandatory-prefix group (f2, f3, 66, none)" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \taddsd %xmm0, %xmm1\n\
-     \taddss %xmm0, %xmm1\n\
-     \tcomisd %xmm0, %xmm1\n\
-     \tcomiss %xmm2, %xmm3\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	addsd %xmm0, %xmm1
+	addss %xmm0, %xmm1
+	comisd %xmm0, %xmm1
+	comiss %xmm2, %xmm3
+	ret
+|};
   [%expect
     {|
     40000000  f2 0f 58 c8  addsd %xmm0, %xmm1   [x86_64.sse-binop-f2.asz-absent.rex-absent.reg]
@@ -2174,14 +2194,15 @@ let%expect_test "a REX-extended xmm register keeps the mandatory prefix before R
 
 let%expect_test "movsd/movss both directions, including a SIB-addressed memory operand" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovsd (%rax,%rcx,8), %xmm2\n\
-     \tmovsd %xmm2, (%rax,%rcx,8)\n\
-     \tmovss (%rax), %xmm1\n\
-     \tmovss %xmm1, (%rax)\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movsd (%rax,%rcx,8), %xmm2
+	movsd %xmm2, (%rax,%rcx,8)
+	movss (%rax), %xmm1
+	movss %xmm1, (%rax)
+	ret
+|};
   [%expect
     {|
     40000000  f2 0f 10 14 c8  movsd (%rax,%rcx,8), %xmm2  [x86_64.sse-movsd-load.asz-absent.rex-absent.sib-disp0]
@@ -2206,14 +2227,15 @@ let%expect_test "movsd with a 32-bit address and an xmm8-15 destination" =
 
 let%expect_test "cvtsi2sdq sets REX.W; cvttsd2si's width comes from its GPR destination" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tcvtsi2sd %eax, %xmm0\n\
-     \tcvtsi2sdq %rax, %xmm0\n\
-     \tcvttsd2si %xmm0, %eax\n\
-     \tcvttsd2si %xmm0, %rax\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	cvtsi2sd %eax, %xmm0
+	cvtsi2sdq %rax, %xmm0
+	cvttsd2si %xmm0, %eax
+	cvttsd2si %xmm0, %rax
+	ret
+|};
   [%expect
     {|
     40000000  f2 0f 2a c0     cvtsi2sd %eax, %xmm0   [x86_64.cvtsi2sd-r-rm.asz-absent.rex-absent.reg]
@@ -2244,13 +2266,14 @@ let%expect_test "a RIP-relative binop memory operand (xorpd)" =
    addition only (x86_32_encode.ml). *)
 let%expect_test "x86_32 has xmm0-xmm7 with the same SSE2 encoding as x86_64" =
   disasm "x86_32"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \taddsd %xmm2, %xmm3\n\
-     \tcvtsi2sd %eax, %xmm4\n\
-     \tmovsd (%eax), %xmm5\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	addsd %xmm2, %xmm3
+	cvtsi2sd %eax, %xmm4
+	movsd (%eax), %xmm5
+	ret
+|};
   [%expect
     {|
     40000000  f2 0f 58 da  addsd %xmm2, %xmm3    [x86_32.sse-binop-f2.reg]
@@ -2304,13 +2327,14 @@ let%expect_test "an xmm register used as a memory base is rejected at parse time
    [scale = 1] already writes when the source spells it out. *)
 let%expect_test "(%base,%index) with the scale omitted defaults to 1" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tleaq (%rax,%rax), %rsi\n\
-     \tmovb $1, -368(%rbp,%rax)\n\
-     \tmovl (%rcx,%rdx), %eax\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	leaq (%rax,%rax), %rsi
+	movb $1, -368(%rbp,%rax)
+	movl (%rcx,%rdx), %eax
+	ret
+|};
   [%expect
     {|
     40000000  48 8d 34 00              leaq (%rax,%rax,1), %rsi    [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-disp0]
@@ -2328,15 +2352,16 @@ let%expect_test "(%base,%index) with the scale omitted defaults to 1" =
    on x86_32 (`lea (%eax,%edx),%ecx` -> `8d 0c 10`). *)
 let%expect_test "%ah/%ch/%dh/%bh, x86_32's legacy high-byte registers" =
   disasm "x86_32"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovb %ah, %al\n\
-     \tmovb %ch, %dl\n\
-     \tmovb %dh, %bl\n\
-     \tmovb %bh, %cl\n\
-     \tleal (%eax,%edx), %ecx\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movb %ah, %al
+	movb %ch, %dl
+	movb %dh, %bl
+	movb %bh, %cl
+	leal (%eax,%edx), %ecx
+	ret
+|};
   [%expect
     {|
     40000000  88 e0     movb %ah, %al             [x86_32.mov-rm-r8.opsz-absent.reg]
@@ -2968,26 +2993,28 @@ let%expect_test "a direct-lowered pin is checked by the codec, not by the parser
 
 let%expect_test "a split-field modifier lowers to two relocatable halves" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovw r1, #:lower16:g\n\
-     \tmovt r1, #:upper16:g\n\
-     \tbx lr\n\
-     \t.globl g\n\
-     g:\n";
+    {|	.text
+	.globl f
+f:
+	movw r1, #:lower16:g
+	movt r1, #:upper16:g
+	bx lr
+	.globl g
+g:
+|};
   (* And with a nonzero addend, which is the case a REL target has to get right:
      the addend is not in a record field but in the instruction, so it must
      survive the same split as the address it is added to. *)
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovw r1, #:lower16:g+5\n\
-     \tmovt r1, #:upper16:g+5\n\
-     \tbx lr\n\
-     \t.globl g\n\
-     g:\n";
+    {|	.text
+	.globl f
+f:
+	movw r1, #:lower16:g+5
+	movt r1, #:upper16:g+5
+	bx lr
+	.globl g
+g:
+|};
   [%expect
     {|
     40000000  0c 10 00 e3  movw r1, #12     [arm.movw]
@@ -3054,25 +3081,29 @@ let riscv_two_input_case target =
   assemble_many target
     [
       ( "caller",
-        "\t.text\n\
-         \t.balign 2\n\
-         \t.globl entry\n\
-         entry:\n\
-         \tcall callee\n\
-         1:\tauipc x31, %pcrel_hi(gvar)\n\
-         \tlw x6, %pcrel_lo(1b)(x31)\n\
-         \tjr x1\n" );
+        {|	.text
+	.balign 2
+	.globl entry
+entry:
+	call callee
+1:	auipc x31, %pcrel_hi(gvar)
+	lw x6, %pcrel_lo(1b)(x31)
+	jr x1
+|}
+      );
       ( "callee_mod",
-        "\t.text\n\
-         \t.balign 2\n\
-         \t.globl callee\n\
-         callee:\n\
-         \tjr x1\n\
-         \t.data\n\
-         \t.balign 4\n\
-         \t.globl gvar\n\
-         gvar:\n\
-         \t.long 99\n" );
+        {|	.text
+	.balign 2
+	.globl callee
+callee:
+	jr x1
+	.data
+	.balign 4
+	.globl gvar
+gvar:
+	.long 99
+|}
+      );
     ]
 
 let%expect_test "riscv32: cross-file call and pcrel-hi/lo data reference resolve after the merge" =
@@ -3094,17 +3125,18 @@ let%expect_test "riscv64: cross-file call and pcrel-hi/lo data reference resolve
    R_RISCV_PCREL_HI20/LO12_I-relocated syntax, not an invented shape. *)
 let riscv_pcrel_register_name_collision target =
   attempt target
-    "\t.text\n\
-     \t.balign 2\n\
-     \t.globl entry\n\
-     entry:\n\
-     1:\tauipc x31, %pcrel_hi(f1)\n\
-     \tlw x6, %pcrel_lo(1b)(x31)\n\
-     \tjr x1\n\
-     \t.data\n\
-     \t.balign 4\n\
-     f1:\n\
-     \t.long 99\n"
+    {|	.text
+	.balign 2
+	.globl entry
+entry:
+1:	auipc x31, %pcrel_hi(f1)
+	lw x6, %pcrel_lo(1b)(x31)
+	jr x1
+	.data
+	.balign 4
+f1:
+	.long 99
+|}
 
 let%expect_test "riscv32: %pcrel_hi/%pcrel_lo resolve a symbol named like a register (f1)" =
   riscv_pcrel_register_name_collision "riscv32";
@@ -3202,19 +3234,21 @@ let%expect_test "riscv32/riscv64: Zbb min/minu/max/maxu share an R-type shape di
 
 let%expect_test "riscv32/riscv64: Zbb andn/orn/xnor/rol/ror are a Req_any-normalized R-type shape" =
   show_lowered "riscv32"
-    "\t.text\n\
-     \tandn a0, a1, a2\n\
-     \torn a0, a1, a2\n\
-     \txnor a0, a1, a2\n\
-     \trol a0, a1, a2\n\
-     \tror a0, a1, a2\n";
+    {|	.text
+	andn a0, a1, a2
+	orn a0, a1, a2
+	xnor a0, a1, a2
+	rol a0, a1, a2
+	ror a0, a1, a2
+|};
   show_lowered "riscv64"
-    "\t.text\n\
-     \tandn a0, a1, a2\n\
-     \torn a0, a1, a2\n\
-     \txnor a0, a1, a2\n\
-     \trol a0, a1, a2\n\
-     \tror a0, a1, a2\n";
+    {|	.text
+	andn a0, a1, a2
+	orn a0, a1, a2
+	xnor a0, a1, a2
+	rol a0, a1, a2
+	ror a0, a1, a2
+|};
   [%expect
     {|
     lowered t
@@ -3364,17 +3398,18 @@ let%expect_test "a branch to a same-section symbol in another input always takes
    resource caveat stated in a doc comment is also a checked fact. *)
 let%expect_test "portable manifest aggregates a multi-segment image, including BSS" =
   let text =
-    "\t.text\n\
-     \t.globl start\n\
-     start:\n\
-     \tmovl $1, %eax\n\
-     \tret\n\
-     \t.data\n\
-     g:\n\
-     \t.long 42\n\
-     \t.bss\n\
-     b:\n\
-     \t.zero 8\n"
+    {|	.text
+	.globl start
+start:
+	movl $1, %eax
+	ret
+	.data
+g:
+	.long 42
+	.bss
+b:
+	.zero 8
+|}
   in
   (match Driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m" ~text with
   | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
@@ -3418,17 +3453,18 @@ let%expect_test "portable manifest aggregates a multi-segment image, including B
      f861fa80  ldr x0, [x20, x1, sxtx #3] *)
 let%expect_test "register-offset addressing: uxtw/sxtw/sxtx/lsl, scaled and unscaled" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tldr w4, [x9, w10, uxtw #2]\n\
-     \tldr w4, [x9, w10, uxtw]\n\
-     \tldr x2, [x20, x1]\n\
-     \tldr x2, [x20, x1, lsl #3]\n\
-     \tstr w0, [x9, w10, sxtw #2]\n\
-     \tldrb w2, [x22, w5, uxtw]\n\
-     \tldr x0, [x20, x1, sxtx #3]\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	ldr w4, [x9, w10, uxtw #2]
+	ldr w4, [x9, w10, uxtw]
+	ldr x2, [x20, x1]
+	ldr x2, [x20, x1, lsl #3]
+	str w0, [x9, w10, sxtw #2]
+	ldrb w2, [x22, w5, uxtw]
+	ldr x0, [x20, x1, sxtx #3]
+	ret
+|};
   [%expect
     {|
     40000000  24 59 6a b8  ldr w4, [x9, w10, uxtw #2]  [aarch64.ldr32-roff]
@@ -3460,15 +3496,16 @@ let%expect_test "register-offset addressing: uxtw/sxtw/sxtx/lsl, scaled and unsc
    case.) *)
 let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = sp" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tadd x0, x0, x16, uxtx #0\n\
-     \tadd x1, sp, x2, uxtx #0\n\
-     \tadd x3, x4, w5, uxtw #2\n\
-     \tadd w6, w7, w8, uxtb #0\n\
-     \tsub x9, x10, x11, sxtx #3\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	add x0, x0, x16, uxtx #0
+	add x1, sp, x2, uxtx #0
+	add x3, x4, w5, uxtw #2
+	add w6, w7, w8, uxtb #0
+	sub x9, x10, x11, sxtx #3
+	ret
+|};
   [%expect
     {|
     40000000  00 60 30 8b  add x0, x0, x16, uxtx #0   [aarch64.addsub-extend]
@@ -3499,31 +3536,32 @@ let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = s
      384ff4c5  ldrb w5, [x6], #255      785007e7  ldrh w7, [sp], #-256 *)
 let%expect_test "sdiv, cmn, auto-shifted cmp, sbfx, ldp/stp and post-indexed ldr/str" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tsdiv w12, w14, w2\n\
-     \tsdiv x7, x9, x4\n\
-     \tcmn w12, #3\n\
-     \tcmn x1, #4095\n\
-     \tcmn w0, #16384\n\
-     \tcmp w9, #16384\n\
-     \tsbfx w7, w0, 8, 7\n\
-     \tsbfx x1, x2, #3, #60\n\
-     \tldp x16, x17, [x30], #16\n\
-     \tldp w1, w2, [sp], #-8\n\
-     \tstp x16, x17, [x14], #16\n\
-     \tstp x15, x30, [sp, #0]\n\
-     \tstp x1, x2, [x3, #-512]\n\
-     \tldp x1, x2, [sp, #504]\n\
-     \tstp w1, w2, [sp, #8]\n\
-     \tldr x16, [x30], #8\n\
-     \tstr x16, [x14], #8\n\
-     \tldr w1, [x2], #-4\n\
-     \tstrb w3, [x4], #1\n\
-     \tldrb w5, [x6], #255\n\
-     \tldrh w7, [sp], #-256\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	sdiv w12, w14, w2
+	sdiv x7, x9, x4
+	cmn w12, #3
+	cmn x1, #4095
+	cmn w0, #16384
+	cmp w9, #16384
+	sbfx w7, w0, 8, 7
+	sbfx x1, x2, #3, #60
+	ldp x16, x17, [x30], #16
+	ldp w1, w2, [sp], #-8
+	stp x16, x17, [x14], #16
+	stp x15, x30, [sp, #0]
+	stp x1, x2, [x3, #-512]
+	ldp x1, x2, [sp, #504]
+	stp w1, w2, [sp, #8]
+	ldr x16, [x30], #8
+	str x16, [x14], #8
+	ldr w1, [x2], #-4
+	strb w3, [x4], #1
+	ldrb w5, [x6], #255
+	ldrh w7, [sp], #-256
+	ret
+|};
   [%expect
     {|
     40000000  cc 0d c2 1a  sdiv w12, w14, w2         [aarch64.sdiv]
@@ -3554,15 +3592,16 @@ let%expect_test "sdiv, cmn, auto-shifted cmp, sbfx, ldp/stp and post-indexed ldr
    OBJECT in [.bss]); a [.comm] without [.local] stays a common symbol. *)
 let%expect_test ".local plus .comm is a local .bss object, not a common one" =
   let source_text =
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tadrp x9, scratch\n\
-     \tadd x9, x9, #:lo12:scratch\n\
-     \tret\n\
-     \t.local scratch\n\
-     \t.comm scratch, 4096, 8\n\
-     \t.comm counter, 4, 4\n"
+    {|	.text
+	.globl f
+f:
+	adrp x9, scratch
+	add x9, x9, #:lo12:scratch
+	ret
+	.local scratch
+	.comm scratch, 4096, 8
+	.comm counter, 4, 4
+|}
   in
   let (module D : Target_intf.Target.DRIVER) = driver "aarch64" in
   (match D.dump_lowered_ast ~unit_name:"t" ~source:(source source_text) () with
@@ -3622,16 +3661,17 @@ let%expect_test "stp has no register-offset addressing form" =
      1e2c1003  fmov s3, #5.000000000000000000e-01 *)
 let%expect_test "fcmp #0.0 and fmov modified-immediate forms, single and double" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tfcmp d0, #0.0\n\
-     \tfcmp s1, #0.0\n\
-     \tfmov d0, #1.0\n\
-     \tfmov s0, #1.0\n\
-     \tfmov d2, #-1.0\n\
-     \tfmov s3, #0.5\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	fcmp d0, #0.0
+	fcmp s1, #0.0
+	fmov d0, #1.0
+	fmov s0, #1.0
+	fmov d2, #-1.0
+	fmov s3, #0.5
+	ret
+|};
   [%expect
     {|
     40000000  08 20 60 1e  fcmp d0, #0.000000000000000000e+00   [aarch64.fcmp-imm0-d]
@@ -3691,15 +3731,16 @@ let%expect_test "add ..., #:lo12:sym" =
    being promoted here. *)
 let%expect_test "stp/ldr/add/fmov with the [#] omitted, gcc's own spelling" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tstp x29, x30, [sp, -48]!\n\
-     \tldr x0, [x0, x1, lsl 3]\n\
-     \tadd x9, x9, x16, uxtx 0\n\
-     \tfmov d0, 1.0e+0\n\
-     \tfmov d1, 5.0e-1\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	stp x29, x30, [sp, -48]!
+	ldr x0, [x0, x1, lsl 3]
+	add x9, x9, x16, uxtx 0
+	fmov d0, 1.0e+0
+	fmov d1, 5.0e-1
+	ret
+|};
   [%expect
     {|
     40000000  fd 7b bd a9  stp x29, x30, [sp, #-48]!           [aarch64.stp-pre]
@@ -3728,18 +3769,19 @@ let%expect_test "stp/ldr/add/fmov with the [#] omitted, gcc's own spelling" =
      8a250063  bic x3, x3, x5 *)
 let%expect_test "eor/and/orr (shifted register), and mov between two general registers" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \teor w0, w1, w2\n\
-     \teor x0, x1, x2\n\
-     \teor w5, w4, w13, lsl #24\n\
-     \tand w5, w2, w14\n\
-     \tmov x0, x1\n\
-     \tmov w0, w1\n\
-     \torr x1, xzr, x20, lsl #1\n\
-     \tbic x3, x3, x5\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	eor w0, w1, w2
+	eor x0, x1, x2
+	eor w5, w4, w13, lsl #24
+	and w5, w2, w14
+	mov x0, x1
+	mov w0, w1
+	orr x1, xzr, x20, lsl #1
+	bic x3, x3, x5
+	ret
+|};
   [%expect
     {|
     40000000  20 00 02 4a  eor w0, w1, w2            [aarch64.logical-shift]
@@ -3803,21 +3845,22 @@ let%expect_test "a 32-bit bitmask immediate spelled at its own width's negative 
      53000c00  ubfiz w0, w0, 0, 4 *)
 let%expect_test "movn/cbz/cbnz/sxtw/udiv/msub/cset/movk/lsl/ubfx/ubfiz" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovn w0, #0\n\
-     \tcbz x0, f\n\
-     \tcbnz w1, f\n\
-     \tsxtw x0, w3\n\
-     \tudiv w0, w1, w2\n\
-     \tmsub w0, w1, w2, w3\n\
-     \tcset w0, eq\n\
-     \tmovk w0, #5, lsl #16\n\
-     \tlsl w21, w8, w6\n\
-     \tubfx w1, w0, 2, 3\n\
-     \tubfiz w0, w0, 0, 4\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movn w0, #0
+	cbz x0, f
+	cbnz w1, f
+	sxtw x0, w3
+	udiv w0, w1, w2
+	msub w0, w1, w2, w3
+	cset w0, eq
+	movk w0, #5, lsl #16
+	lsl w21, w8, w6
+	ubfx w1, w0, 2, 3
+	ubfiz w0, w0, 0, 4
+	ret
+|};
   [%expect
     {|
     40000000  00 00 80 12  movn w0, #0           [aarch64.movn]
@@ -3870,24 +3913,25 @@ let%expect_test "movn/cbz/cbnz/sxtw/udiv/msub/cset/movk/lsl/ubfx/ubfiz" =
      9e6703e9  fmov d9, xzr *)
 let%expect_test "fadd/fsub/fmul/fdiv/fcsel/fcmp(reg)/scvtf/ucvtf/fneg/fcvt/fcvtzs/fmov(gpr)" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tfadd d0, d1, d2\n\
-     \tfadd s0, s1, s2\n\
-     \tfsub d3, d4, d5\n\
-     \tfmul d6, d7, d8\n\
-     \tfdiv d9, d10, d11\n\
-     \tfcsel d12, d13, d14, eq\n\
-     \tfcmp d8, d9\n\
-     \tscvtf d17, w16\n\
-     \tscvtf s17, x18\n\
-     \tucvtf d19, w20\n\
-     \tfneg d0, d1\n\
-     \tfcvt s2, d3\n\
-     \tfcvtzs x4, d5\n\
-     \tfmov d9, xzr\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	fadd d0, d1, d2
+	fadd s0, s1, s2
+	fsub d3, d4, d5
+	fmul d6, d7, d8
+	fdiv d9, d10, d11
+	fcsel d12, d13, d14, eq
+	fcmp d8, d9
+	scvtf d17, w16
+	scvtf s17, x18
+	ucvtf d19, w20
+	fneg d0, d1
+	fcvt s2, d3
+	fcvtzs x4, d5
+	fmov d9, xzr
+	ret
+|};
   [%expect
     {|
       40000000  20 28 62 1e  fadd d0, d1, d2          [aarch64.fadd-d]
@@ -3916,21 +3960,22 @@ let%expect_test "fadd/fsub/fmul/fdiv/fcsel/fcmp(reg)/scvtf/ucvtf/fneg/fcvt/fcvtz
    for [fmov s9, wzr]. *)
 let%expect_test "the single-precision widths, fcvt's reverse direction, and fmov s9, wzr" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tfsub s3, s4, s5\n\
-     \tfmul s6, s7, s8\n\
-     \tfdiv s9, s10, s11\n\
-     \tfcsel s12, s13, s14, ne\n\
-     \tfcmp s8, s9\n\
-     \tscvtf s4, w3\n\
-     \tucvtf s19, x20\n\
-     \tfneg s0, s1\n\
-     \tfcvt d2, s3\n\
-     \tfcvtzs w4, s5\n\
-     \tfmov s9, wzr\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	fsub s3, s4, s5
+	fmul s6, s7, s8
+	fdiv s9, s10, s11
+	fcsel s12, s13, s14, ne
+	fcmp s8, s9
+	scvtf s4, w3
+	ucvtf s19, x20
+	fneg s0, s1
+	fcvt d2, s3
+	fcvtzs w4, s5
+	fmov s9, wzr
+	ret
+|};
   [%expect
     {|
     40000000  83 38 25 1e  fsub s3, s4, s5          [aarch64.fsub-s]
@@ -3960,18 +4005,19 @@ let%expect_test "the single-precision widths, fcvt's reverse direction, and fmov
    sxtw #3]` -> `fc78daa0`. *)
 let%expect_test "ldr/str into a scalar FP register, both addressing modes and widths" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tstr d8, [sp, #16]\n\
-     \tldr d8, [sp, #16]\n\
-     \tstr s8, [sp, #16]\n\
-     \tldr s8, [sp, #16]\n\
-     \tldr d0, [x21, w24, sxtw #3]\n\
-     \tldr s0, [x21, w24, sxtw #2]\n\
-     \tstr d3, [x2, w3, sxtw #3]\n\
-     \tstr s3, [x2, w3, sxtw #2]\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	str d8, [sp, #16]
+	ldr d8, [sp, #16]
+	str s8, [sp, #16]
+	ldr s8, [sp, #16]
+	ldr d0, [x21, w24, sxtw #3]
+	ldr s0, [x21, w24, sxtw #2]
+	str d3, [x2, w3, sxtw #3]
+	str s3, [x2, w3, sxtw #2]
+	ret
+|};
   [%expect
     {|
     40000000  e8 0b 00 fd  str d8, [sp, #16]            [aarch64.str64-f]
@@ -3989,13 +4035,14 @@ let%expect_test "ldr/str into a scalar FP register, both addressing modes and wi
    evidence: knucleotide.c's own float-constant load, `ldr s2, [x16, #:lo12:.L142]`). *)
 let%expect_test "ldr dN/sN, [xN, #:lo12:sym] reads a symbolic low-12 offset" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tadrp x16, f\n\
-     \tldr d1, [x16, #:lo12:f]\n\
-     \tldr s1, [x16, #:lo12:f]\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	adrp x16, f
+	ldr d1, [x16, #:lo12:f]
+	ldr s1, [x16, #:lo12:f]
+	ret
+|};
   [%expect
     {|
     40000000  10 00 00 90  adrp x16, 1073741824  [aarch64.adrp]
@@ -4060,19 +4107,20 @@ let%expect_test "add/sub auto-select the lsl #12 form for a bare multiple-of-409
    ft6, ft7` -> `027372d3`, `fneg.d fs0, fs1` -> `22949453`. *)
 let%expect_test "riscv: fld/fsd/flw/fsw, fadd/fsub/fmul/fdiv, fneg/fmv" =
   show_lowered "riscv64"
-    "\t.text\n\
-     \tfld f1, 8(x10)\n\
-     \tflw f2, 4(x11)\n\
-     \tfsd f3, 16(x12)\n\
-     \tfsw f4, 12(x13)\n\
-     \tfadd.d f5, f6, f7\n\
-     \tfadd.s f5, f6, f7\n\
-     \tfsub.d f5, f6, f7\n\
-     \tfmul.d f5, f6, f7\n\
-     \tfdiv.d f5, f6, f7\n\
-     \tfneg.d f8, f9\n\
-     \tfneg.s f8, f9\n\
-     \tfmv.d f8, f9\n";
+    {|	.text
+	fld f1, 8(x10)
+	flw f2, 4(x11)
+	fsd f3, 16(x12)
+	fsw f4, 12(x13)
+	fadd.d f5, f6, f7
+	fadd.s f5, f6, f7
+	fsub.d f5, f6, f7
+	fmul.d f5, f6, f7
+	fdiv.d f5, f6, f7
+	fneg.d f8, f9
+	fneg.s f8, f9
+	fmv.d f8, f9
+|};
   [%expect
     {|
     lowered t
@@ -4103,21 +4151,22 @@ let%expect_test "riscv: fld/fsd/flw/fsw, fadd/fsub/fmul/fdiv, fneg/fmv" =
    `c206f653`, `fcvt.d.w f14, x13` -> `d2068753`, `fcvt.s.d f15, f16` -> `401877d3`. *)
 let%expect_test "riscv: feq/fle/flt, fcvt between float and integer, fmv.x.d" =
   show_lowered "riscv64"
-    "\t.text\n\
-     \tfeq.d x11, f11, f12\n\
-     \tfle.d x11, f11, f12\n\
-     \tflt.d x11, f11, f12\n\
-     \tflt.s x11, f11, f12\n\
-     \tfcvt.w.d x12, f13\n\
-     \tfcvt.wu.d x12, f13\n\
-     \tfcvt.l.d x12, f13\n\
-     \tfcvt.d.w f14, x13\n\
-     \tfcvt.d.wu f14, x13\n\
-     \tfcvt.s.w f14, x13\n\
-     \tfcvt.s.d f15, f16\n\
-     \tfcvt.d.s f15, f16\n\
-     \tfcvt.s.l f15, x14\n\
-     \tfmv.x.d x10, f10\n";
+    {|	.text
+	feq.d x11, f11, f12
+	fle.d x11, f11, f12
+	flt.d x11, f11, f12
+	flt.s x11, f11, f12
+	fcvt.w.d x12, f13
+	fcvt.wu.d x12, f13
+	fcvt.l.d x12, f13
+	fcvt.d.w f14, x13
+	fcvt.d.wu f14, x13
+	fcvt.s.w f14, x13
+	fcvt.s.d f15, f16
+	fcvt.d.s f15, f16
+	fcvt.s.l f15, x14
+	fmv.x.d x10, f10
+|};
   [%expect
     {|
     lowered t
@@ -4216,16 +4265,17 @@ let%expect_test "riscv64: fcvt.w.d/fcvt.l.d read an explicit rounding-mode opera
    [%sil]/[%dil] forms are REX-free; those two still need the empty REX. *)
 let%expect_test "x86_64: byte-width ALU immediates carry REX only for a real byte-register need" =
   disasm "x86_64"
-    "\t.text\n\
-     \tandb $5, %cl\n\
-     \taddb $5, %cl\n\
-     \tsubb $5, %cl\n\
-     \txorb $5, %cl\n\
-     \tcmpb $1, %dl\n\
-     \tandb $5, %sil\n\
-     \txorb $3, %dil\n\
-     \tcmpb $1, %r9b\n\
-     \tandb $5, 4(%rax)\n";
+    {|	.text
+	andb $5, %cl
+	addb $5, %cl
+	subb $5, %cl
+	xorb $5, %cl
+	cmpb $1, %dl
+	andb $5, %sil
+	xorb $3, %dil
+	cmpb $1, %r9b
+	andb $5, 4(%rax)
+|};
   [%expect
     {|
     40000000  80 e1 05     andb $5, %cl      [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.reg]
@@ -4243,13 +4293,14 @@ let%expect_test "x86_64: byte-width ALU immediates carry REX only for a real byt
    or an [%eax]-based address read back as [%cl]/[%rax]-based. *)
 let%expect_test "x86_64: byte-immediate and jmp r/m forms decode their REX/address-size operands" =
   disasm "x86_64"
-    "\t.text\n\
-     \tandb $5, %r9b\n\
-     \tmovb $5, 4(%r11)\n\
-     \tmovb $5, %r10b\n\
-     \tandb $5, 4(%eax)\n\
-     \tjmp *%r9\n\
-     \tjmp *8(%r12)\n";
+    {|	.text
+	andb $5, %r9b
+	movb $5, 4(%r11)
+	movb $5, %r10b
+	andb $5, 4(%eax)
+	jmp *%r9
+	jmp *8(%r12)
+|};
   [%expect
     {|
     40000000  41 80 e1 05     andb $5, %r9b     [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-present.reg]
@@ -4289,20 +4340,21 @@ let%expect_test ".p2align normalizes to a power-of-two byte boundary" =
    [9ac12803] [1ac32c41] [9e7900a4] [1e3900a4] [9e390020] [1e7903e0], in order. *)
 let%expect_test "lsr/asr/ror (register) and fcvtzu" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tlsr x3, x0, x1\n\
-     \tasr w4, w8, w6\n\
-     \tror x0, x1, x2\n\
-     \tlsr w9, w10, w11\n\
-     \tasr x3, x0, x1\n\
-     \tror w1, w2, w3\n\
-     \tfcvtzu x4, d5\n\
-     \tfcvtzu w4, s5\n\
-     \tfcvtzu x0, s1\n\
-     \tfcvtzu w0, d31\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	lsr x3, x0, x1
+	asr w4, w8, w6
+	ror x0, x1, x2
+	lsr w9, w10, w11
+	asr x3, x0, x1
+	ror w1, w2, w3
+	fcvtzu x4, d5
+	fcvtzu w4, s5
+	fcvtzu x0, s1
+	fcvtzu w0, d31
+	ret
+|};
   [%expect
     {|
     40000000  03 24 c1 9a  lsr x3, x0, x1    [aarch64.lsrv]
@@ -4324,21 +4376,22 @@ let%expect_test "lsr/asr/ror (register) and fcvtzu" =
    REX.W [B8+r] with only four immediate bytes. *)
 let%expect_test "x86_64 movq/movabsq immediates, cltd, cqto" =
   disasm "x86_64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmovq $5, %rax\n\
-     \tmovq $-1, %r9\n\
-     \tmovq $2147483647, %rcx\n\
-     \tmovq $-2147483648, %rdx\n\
-     \tmovq $2147483648, %rax\n\
-     \tmovq $5270498306774157605, %r11\n\
-     \tmovabsq $5270498306774157605, %rcx\n\
-     \tmovabsq $-9223372036854775808, %r15\n\
-     \tmovl $4294967295, %r8d\n\
-     \tcltd\n\
-     \tcqto\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	movq $5, %rax
+	movq $-1, %r9
+	movq $2147483647, %rcx
+	movq $-2147483648, %rdx
+	movq $2147483648, %rax
+	movq $5270498306774157605, %r11
+	movabsq $5270498306774157605, %rcx
+	movabsq $-9223372036854775808, %r15
+	movl $4294967295, %r8d
+	cltd
+	cqto
+	ret
+|};
   [%expect
     {|
     40000000  48 c7 c0 05 00 00 00           movq $5, %rax                     [x86_64.mov-r64-simm32.asz-absent.opsz-absent.rex-present.reg]
@@ -4409,16 +4462,17 @@ let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
    [148d7008], in order. P = 0 with W = 1 is LDRT/STRT and does not decode as one of these. *)
 let%expect_test "arm post-indexed ldr/str/ldrb/strb" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tldr r12, [r2], #4\n\
-     \tstr r12, [r3], #4\n\
-     \tldrb r1, [r0], #1\n\
-     \tstrb r1, [r5], #-1\n\
-     \tldr r0, [r1], #-4095\n\
-     \tstrne r7, [sp], #8\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	ldr r12, [r2], #4
+	str r12, [r3], #4
+	ldrb r1, [r0], #1
+	strb r1, [r5], #-1
+	ldr r0, [r1], #-4095
+	strne r7, [sp], #8
+	bx lr
+|};
   [%expect
     {|
     40000000  04 c0 92 e4  ldr ip, [r2], #4      [arm.ldst-imm]
@@ -4436,22 +4490,23 @@ let%expect_test "arm post-indexed ldr/str/ldrb/strb" =
    [934220a4], in order. *)
 let%expect_test "aarch64 ldrsb/ldrsh/ldrsw and sbfiz" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tldrsb w0, [x1, #3]\n\
-     \tldrsb x2, [x3]\n\
-     \tldrsh w4, [x5, #6]\n\
-     \tldrsh x6, [sp, #8]\n\
-     \tldrsw x7, [x8, #12]\n\
-     \tldrsb w9, [x10, x11]\n\
-     \tldrsh x12, [x13, x14, lsl #1]\n\
-     \tldrsw x15, [x16, w17, sxtw #2]\n\
-     \tldrsh w18, [x19, #4094]\n\
-     \tsbfiz w0, w1, #3, #5\n\
-     \tsbfiz x2, x3, #10, #20\n\
-     \tsbfx x4, x5, #2, #7\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	ldrsb w0, [x1, #3]
+	ldrsb x2, [x3]
+	ldrsh w4, [x5, #6]
+	ldrsh x6, [sp, #8]
+	ldrsw x7, [x8, #12]
+	ldrsb w9, [x10, x11]
+	ldrsh x12, [x13, x14, lsl #1]
+	ldrsw x15, [x16, w17, sxtw #2]
+	ldrsh w18, [x19, #4094]
+	sbfiz w0, w1, #3, #5
+	sbfiz x2, x3, #10, #20
+	sbfx x4, x5, #2, #7
+	ret
+|};
   [%expect
     {|
     40000000  20 0c c0 39  ldrsb w0, [x1, #3]              [aarch64.ldrsb-w]
@@ -4476,24 +4531,25 @@ let%expect_test "aarch64 ldrsb/ldrsh/ldrsw and sbfiz" =
    [e7a421d3] [e7a04fd5], in order. *)
 let%expect_test "arm ldrh/strh/ldrsb/ldrsh and sbfx" =
   disasm "arm"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tldrh r0, [r1, #6]\n\
-     \tstrh r2, [r3, #-2]\n\
-     \tldrsh r4, [r5, #254]\n\
-     \tldrsb r6, [r7]\n\
-     \tldrh ip, [r2], #2\n\
-     \tstrh ip, [r3], #2\n\
-     \tldrsb r0, [r1, r2]\n\
-     \tldrh r3, [r4, -r5]\n\
-     \tstrh r6, [r7, r8]\n\
-     \tldrsh r9, [sp, #-255]\n\
-     \tldrshne r1, [r2]\n\
-     \tsbfx r0, r1, #0, #16\n\
-     \tsbfx r2, r3, #3, #5\n\
-     \tsbfx r4, r5, #31, #1\n\
-     \tbx lr\n";
+    {|	.text
+	.globl f
+f:
+	ldrh r0, [r1, #6]
+	strh r2, [r3, #-2]
+	ldrsh r4, [r5, #254]
+	ldrsb r6, [r7]
+	ldrh ip, [r2], #2
+	strh ip, [r3], #2
+	ldrsb r0, [r1, r2]
+	ldrh r3, [r4, -r5]
+	strh r6, [r7, r8]
+	ldrsh r9, [sp, #-255]
+	ldrshne r1, [r2]
+	sbfx r0, r1, #0, #16
+	sbfx r2, r3, #3, #5
+	sbfx r4, r5, #31, #1
+	bx lr
+|};
   [%expect
     {|
     40000000  b6 00 d1 e1  ldrh r0, [r1, #6]      [arm.ldst-x-imm]
@@ -4517,21 +4573,22 @@ let%expect_test "arm ldrh/strh/ldrsb/ldrsh and sbfx" =
    GNU as 2.44 (the words are listed in each target's codec comment). *)
 let%expect_test "aarch64 rbit/rev16/rev32/rev/clz/cls" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \trbit w0, w1\n\
-     \trbit x2, x3\n\
-     \trev16 w4, w5\n\
-     \trev16 x6, x7\n\
-     \trev32 x8, x9\n\
-     \trev w10, w11\n\
-     \trev x12, x13\n\
-     \tclz w14, w15\n\
-     \tclz x16, x17\n\
-     \tcls w18, w19\n\
-     \tcls x20, x21\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	rbit w0, w1
+	rbit x2, x3
+	rev16 w4, w5
+	rev16 x6, x7
+	rev32 x8, x9
+	rev w10, w11
+	rev x12, x13
+	clz w14, w15
+	clz x16, x17
+	cls w18, w19
+	cls x20, x21
+	ret
+|};
   [%expect
     {|
     40000000  20 00 c0 5a  rbit w0, w1   [aarch64.rbit-w]
@@ -4577,14 +4634,15 @@ let%expect_test "x86 bswap" =
    aarch64-linux-gnu-as/objdump: `mrs x17, fpcr` -> `d53b4411`, `msr fpcr, x17` -> `d51b4411`. *)
 let%expect_test "mrs and msr move FPCR through a 64-bit register" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tmrs x17, fpcr\n\
-     \tmsr fpcr, x17\n\
-     \tmrs x0, fpcr\n\
-     \tmsr fpcr, x30\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	mrs x17, fpcr
+	msr fpcr, x17
+	mrs x0, fpcr
+	msr fpcr, x30
+	ret
+|};
   [%expect
     {|
     40000000  11 44 3b d5  mrs x17, fpcr  [aarch64.mrs-fpcr]
@@ -4598,20 +4656,21 @@ let%expect_test "mrs and msr move FPCR through a 64-bit register" =
    aarch64-linux-gnu-as/objdump byte for byte. *)
 let%expect_test "fsqrt, frintz, fmadd, fmax and fmov to a general register" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tfsqrt d0, d1\n\
-     \tfsqrt s31, s2\n\
-     \tfrintz d0, d1\n\
-     \tfrintz s3, s30\n\
-     \tfmadd d0, d1, d2, d3\n\
-     \tfmadd s4, s5, s6, s7\n\
-     \tfmov x0, d1\n\
-     \tfmov w9, s30\n\
-     \tfmax d0, d1, d2\n\
-     \tfmax s3, s4, s31\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	fsqrt d0, d1
+	fsqrt s31, s2
+	frintz d0, d1
+	frintz s3, s30
+	fmadd d0, d1, d2, d3
+	fmadd s4, s5, s6, s7
+	fmov x0, d1
+	fmov w9, s30
+	fmax d0, d1, d2
+	fmax s3, s4, s31
+	ret
+|};
   [%expect
     {|
     40000000  20 c0 61 1e  fsqrt d0, d1          [aarch64.fsqrt-d]
@@ -4738,46 +4797,47 @@ let%expect_test "a constructed module prints as GNU assembler source" =
    aarch64-linux-gnu-as/objdump produces for the same source. *)
 let%expect_test "Advanced SIMD vector forms" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tfadd v0.4s, v1.4s, v2.4s\n\
-     \tfadd v3.2s, v4.2s, v5.2s\n\
-     \tfadd v0.2d, v1.2d, v2.2d\n\
-     \tfsub v0.4s, v1.4s, v2.4s\n\
-     \tfmul v0.4s, v1.4s, v2.4s\n\
-     \tfdiv v0.2d, v1.2d, v2.2d\n\
-     \tfmax v0.4s, v1.4s, v31.4s\n\
-     \tfmla v0.4s, v1.4s, v2.4s\n\
-     \tfmla v7.2d, v8.2d, v9.2d\n\
-     \tfneg v0.4s, v1.4s\n\
-     \tfsqrt v0.2d, v1.2d\n\
-     \tfrintz v0.4s, v1.4s\n\
-     \tmov v0.16b, v1.16b\n\
-     \tmov v0.8b, v1.8b\n\
-     \tdup v0.4s, v1.s[0]\n\
-     \tdup v0.2d, v1.d[0]\n\
-     \tdup v0.2s, v1.s[0]\n\
-     \tdup d0, v1.d[1]\n\
-     \tdup s0, v1.s[3]\n\
-     \tdup d0, v1.d[0]\n\
-     \tins v0.d[1], v1.d[0]\n\
-     \tins v0.s[2], v1.s[0]\n\
-     \tins v0.s[3], v1.s[0]\n\
-     \tins v0.d[1], v1.d[0]\n\
-     \tld1 {v0.s}[1], [x1]\n\
-     \tld1 {v0.d}[1], [x2]\n\
-     \tld1r {v0.4s}, [x1]\n\
-     \tld1r {v0.2d}, [x1]\n\
-     \tld1r {v0.2s}, [x1]\n\
-     \tst1 {v0.s}[3], [x1]\n\
-     \tst1 {v0.d}[1], [x1]\n\
-     \tldr q0, [x1, #16]\n\
-     \tstr q31, [sp, #4080]\n\
-     \tldr d0, [x1, #8]\n\
-     \tfcvtl v0.2d, v1.2s\n\
-     \tfcvtn v0.2s, v1.2d\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	fadd v0.4s, v1.4s, v2.4s
+	fadd v3.2s, v4.2s, v5.2s
+	fadd v0.2d, v1.2d, v2.2d
+	fsub v0.4s, v1.4s, v2.4s
+	fmul v0.4s, v1.4s, v2.4s
+	fdiv v0.2d, v1.2d, v2.2d
+	fmax v0.4s, v1.4s, v31.4s
+	fmla v0.4s, v1.4s, v2.4s
+	fmla v7.2d, v8.2d, v9.2d
+	fneg v0.4s, v1.4s
+	fsqrt v0.2d, v1.2d
+	frintz v0.4s, v1.4s
+	mov v0.16b, v1.16b
+	mov v0.8b, v1.8b
+	dup v0.4s, v1.s[0]
+	dup v0.2d, v1.d[0]
+	dup v0.2s, v1.s[0]
+	dup d0, v1.d[1]
+	dup s0, v1.s[3]
+	dup d0, v1.d[0]
+	ins v0.d[1], v1.d[0]
+	ins v0.s[2], v1.s[0]
+	ins v0.s[3], v1.s[0]
+	ins v0.d[1], v1.d[0]
+	ld1 {v0.s}[1], [x1]
+	ld1 {v0.d}[1], [x2]
+	ld1r {v0.4s}, [x1]
+	ld1r {v0.2d}, [x1]
+	ld1r {v0.2s}, [x1]
+	st1 {v0.s}[3], [x1]
+	st1 {v0.d}[1], [x1]
+	ldr q0, [x1, #16]
+	str q31, [sp, #4080]
+	ldr d0, [x1, #8]
+	fcvtl v0.2d, v1.2s
+	fcvtn v0.2s, v1.2d
+	ret
+|};
   [%expect
     {|
     40000000  20 d4 22 4e  fadd v0.4s, v1.4s, v2.4s   [aarch64.vfadd-s4]
@@ -4822,29 +4882,30 @@ let%expect_test "Advanced SIMD vector forms" =
    real aarch64-linux-gnu-as/objdump produces, with [mov] the [orr] of one register with itself. *)
 let%expect_test "Advanced SIMD masks" =
   disasm "aarch64"
-    "\t.text\n\
-     \t.globl f\n\
-     f:\n\
-     \tfcmeq v0.4s, v1.4s, v2.4s\n\
-     \tfcmge v0.4s, v1.4s, v2.4s\n\
-     \tfcmgt v0.4s, v1.4s, v2.4s\n\
-     \tfcmgt v0.2d, v1.2d, v31.2d\n\
-     \tfcmeq v3.2d, v4.2d, v5.2d\n\
-     \tand v0.16b, v1.16b, v2.16b\n\
-     \torr v0.16b, v1.16b, v2.16b\n\
-     \teor v0.16b, v1.16b, v2.16b\n\
-     \tnot v0.16b, v1.16b\n\
-     \tbsl v0.16b, v1.16b, v2.16b\n\
-     \tbsl v7.16b, v31.16b, v9.16b\n\
-     \tbit v0.16b, v1.16b, v2.16b\n\
-     \tbit v7.16b, v31.16b, v9.16b\n\
-     \tbit v0.8b, v1.8b, v2.8b\n\
-     \tdup v0.4s, w1\n\
-     \tdup v0.2d, x1\n\
-     \tdup v31.4s, w30\n\
-     \tdup v3.2s, w4\n\
-     \tmov v0.16b, v1.16b\n\
-     \tret\n";
+    {|	.text
+	.globl f
+f:
+	fcmeq v0.4s, v1.4s, v2.4s
+	fcmge v0.4s, v1.4s, v2.4s
+	fcmgt v0.4s, v1.4s, v2.4s
+	fcmgt v0.2d, v1.2d, v31.2d
+	fcmeq v3.2d, v4.2d, v5.2d
+	and v0.16b, v1.16b, v2.16b
+	orr v0.16b, v1.16b, v2.16b
+	eor v0.16b, v1.16b, v2.16b
+	not v0.16b, v1.16b
+	bsl v0.16b, v1.16b, v2.16b
+	bsl v7.16b, v31.16b, v9.16b
+	bit v0.16b, v1.16b, v2.16b
+	bit v7.16b, v31.16b, v9.16b
+	bit v0.8b, v1.8b, v2.8b
+	dup v0.4s, w1
+	dup v0.2d, x1
+	dup v31.4s, w30
+	dup v3.2s, w4
+	mov v0.16b, v1.16b
+	ret
+|};
   [%expect
     {|
     40000000  20 e4 22 4e  fcmeq v0.4s, v1.4s, v2.4s    [aarch64.vfcmeq-s4]

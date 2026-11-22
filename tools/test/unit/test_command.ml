@@ -136,8 +136,9 @@ let test_usage_then_fatal () =
   check_eq "usage-then-fatal: nothing on stdout" ~expected:"" ~actual:out;
   check_eq "usage-then-fatal: usage precedes the fatal, and usage has no FATAL: prefix"
     ~expected:
-      "Usage: prog --check | --regen | --rehash [case ...]\n\
-       FATAL: --verify supports x86_32 x86_64, got 'sparc'\n"
+      {|Usage: prog --check | --regen | --rehash [case ...]
+FATAL: --verify supports x86_32 x86_64, got 'sparc'
+|}
     ~actual:e
 
 (* {4 Findings are Output, so they never gain a FATAL: prefix} *)

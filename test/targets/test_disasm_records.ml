@@ -135,36 +135,39 @@ let listing target text =
 
 let%expect_test "listings name symbols at their definitions and at the fixups that use them" =
   listing "x86_64"
-    "\t.text\n\
-     \t.globl _start\n\
-     _start:\tcall exp\n\
-     \tmovl counter(%rip), %eax\n\
-     \tret\n\
-     exp:\tret\n\
-     \t.data\n\
-     counter:\t.long 7\n";
+    {|	.text
+	.globl _start
+_start:	call exp
+	movl counter(%rip), %eax
+	ret
+exp:	ret
+	.data
+counter:	.long 7
+|};
   listing "aarch64"
-    "\t.text\n\
-     \t.globl _start\n\
-     _start:\tadrp x0, counter\n\
-     \tadd x0, x0, :lo12:counter\n\
-     \tbl exp\n\
-     \tret\n\
-     exp:\tret\n\
-     \t.data\n\
-     counter:\t.word 7\n";
+    {|	.text
+	.globl _start
+_start:	adrp x0, counter
+	add x0, x0, :lo12:counter
+	bl exp
+	ret
+exp:	ret
+	.data
+counter:	.word 7
+|};
   listing "riscv32"
-    "\t.text\n\
-     \t.globl _start\n\
-     _start:\tlui a0, %hi(counter + 4)\n\
-     \taddi a0, a0, %lo(counter + 4)\n\
-     1:\taddi a0, a0, -1\n\
-     \tbnez a0, 1b\n\
-     \tcall exp\n\
-     \tret\n\
-     exp:\tret\n\
-     \t.data\n\
-     counter:\t.word 7, 8\n";
+    {|	.text
+	.globl _start
+_start:	lui a0, %hi(counter + 4)
+	addi a0, a0, %lo(counter + 4)
+1:	addi a0, a0, -1
+	bnez a0, 1b
+	call exp
+	ret
+exp:	ret
+	.data
+counter:	.word 7, 8
+|};
   [%expect
     {|
     x86_64

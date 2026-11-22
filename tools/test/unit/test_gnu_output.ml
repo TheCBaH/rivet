@@ -162,12 +162,14 @@ let test_section_scope () =
   (* .eh_frame records are dropped by the allowlist: the .cfi_* directives that
      produce them are discarded at parse and never reproduced. *)
   let body =
-    "RELOCATION RECORDS FOR [.text]:\n\
-     OFFSET   TYPE              VALUE\n\
-     00000004 R_X               keep\n\n\
-     RELOCATION RECORDS FOR [.eh_frame]:\n\
-     OFFSET   TYPE              VALUE\n\
-     0000001c R_Y               drop\n"
+    {|RELOCATION RECORDS FOR [.text]:
+OFFSET   TYPE              VALUE
+00000004 R_X               keep
+
+RELOCATION RECORDS FOR [.eh_frame]:
+OFFSET   TYPE              VALUE
+0000001c R_Y               drop
+|}
   in
   check_eq "scope: .eh_frame records dropped" ~expected:".text\t0x00000004\trela\tR_X\tkeep\t0x0\n"
     ~actual:(unwrap (Gnu_output.relocations ~objdump_r:body ~rela:true))

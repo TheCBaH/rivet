@@ -63,16 +63,17 @@ let roundtrip =
   assemble
     (for_host
        ~aarch64:
-         "\t.text\n\
-          \t.globl entry\n\
-          entry:\n\
-          \tldr\tx1, [x0]\n\
-          \tadd\tx1, x1, #1\n\
-          \tstr\tx1, [x0, #8]\n\
-          \tldrb\tw2, [x0, #16]\n\
-          \tstrb\tw2, [x0, #17]\n\
-          \tadd\tx0, x1, #0\n\
-          \tret\n"
+         {|	.text
+	.globl entry
+entry:
+	ldr	x1, [x0]
+	add	x1, x1, #1
+	str	x1, [x0, #8]
+	ldrb	w2, [x0, #16]
+	strb	w2, [x0, #17]
+	add	x0, x1, #0
+	ret
+|}
        ~x86_64:
          {|	.text
 	.globl entry
@@ -117,43 +118,44 @@ let segments =
   assemble
     (for_host
        ~aarch64:
-         "\t.text\n\
-          \t.globl entry\n\
-          entry:\n\
-          \tadrp\tx1, ro\n\
-          \tadd\tx1, x1, :lo12:ro\n\
-          \tldr\tw2, [x1]\n\
-          \tadrp\tx1, counter\n\
-          \tadd\tx1, x1, :lo12:counter\n\
-          \tldr\tw3, [x1]\n\
-          \tadd\tw3, w3, #1\n\
-          \tstr\tw3, [x1]\n\
-          \tadrp\tx1, zeroed\n\
-          \tadd\tx1, x1, :lo12:zeroed\n\
-          \tldr\tw4, [x1]\n\
-          \tmovz\tw5, #100\n\
-          \tstr\tw5, [x1]\n\
-          \tadd\tw0, w2, w3\n\
-          \tadd\tw0, w0, w4\n\
-          \tret\n\
-          \t.section\t.rodata\n\
-          \t.balign 4\n\
-          ro:\n\
-          \t.word\t1000\n\
-          \t.data\n\
-          \t.balign 4\n\
-          \t.globl counter\n\
-          counter:\n\
-          \t.word\t7\n\
-          \t.type counter, @object\n\
-          \t.size counter, 4\n\
-          \t.bss\n\
-          \t.balign 4\n\
-          \t.globl zeroed\n\
-          zeroed:\n\
-          \t.space\t4\n\
-          \t.type zeroed, @object\n\
-          \t.size zeroed, 4\n"
+         {|	.text
+	.globl entry
+entry:
+	adrp	x1, ro
+	add	x1, x1, :lo12:ro
+	ldr	w2, [x1]
+	adrp	x1, counter
+	add	x1, x1, :lo12:counter
+	ldr	w3, [x1]
+	add	w3, w3, #1
+	str	w3, [x1]
+	adrp	x1, zeroed
+	add	x1, x1, :lo12:zeroed
+	ldr	w4, [x1]
+	movz	w5, #100
+	str	w5, [x1]
+	add	w0, w2, w3
+	add	w0, w0, w4
+	ret
+	.section	.rodata
+	.balign 4
+ro:
+	.word	1000
+	.data
+	.balign 4
+	.globl counter
+counter:
+	.word	7
+	.type counter, @object
+	.size counter, 4
+	.bss
+	.balign 4
+	.globl zeroed
+zeroed:
+	.space	4
+	.type zeroed, @object
+	.size zeroed, 4
+|}
        ~x86_64:
          {|	.text
 	.globl entry
@@ -625,19 +627,21 @@ let%expect_test "read_global refuses a size that is negative or larger than the 
       (for_host ~aarch64:"\t.text\n\t.globl entry\nentry:\n\tmovz\tx0, #1\n\tret\n"
          ~x86_64:"\t.text\n\t.globl entry\nentry:\n\tmovl\t$1, %eax\n\tret\n"
          ~riscv64:"\t.text\n\t.globl entry\nentry:\n\tli\ta0, 1\n\tret\n"
-      ^ "\t.data\n\
-         \t.globl ok\n\
-         ok:\n\
-         \t.byte 5\n\
-         \t.size ok, 1\n\
-         \t.globl neg\n\
-         neg:\n\
-         \t.byte 1\n\
-         \t.size neg, -1\n\
-         \t.globl big\n\
-         big:\n\
-         \t.byte 1\n\
-         \t.size big, 0x7fffffffffffffff\n")
+      ^ {|	.data
+	.globl ok
+ok:
+	.byte 5
+	.size ok, 1
+	.globl neg
+neg:
+	.byte 1
+	.size neg, -1
+	.globl big
+big:
+	.byte 1
+	.size big, 0x7fffffffffffffff
+|}
+      )
   in
   let t = ok_or_fail (Native_exec.load img) in
   List.iter
