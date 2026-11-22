@@ -5,7 +5,7 @@
 ; layer audit keeps target vocabulary out.
 
 (library
- (name compute)
+ (name rivet_compute)
  (public_name rivet.compute)
  (modes byte native)
  (enabled_if

@@ -19,7 +19,7 @@ let for_host ~aarch64 ~x86_64 ~riscv64 =
   | h -> failwith ("no hand-written program for " ^ h)
 
 let assemble text =
-  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find host) in
+  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find host) in
   let source = Rivet_foundation.Span.source ~name:"hand.s" ~contents:text in
   match D.assemble ~entry:"entry" ~unit_name:"hand" ~source () with
   | Ok l -> l
@@ -432,7 +432,7 @@ let%expect_test "globals are read from the live mapping between calls" =
 (* {1 Host symbols} *)
 
 let assemble_units target units =
-  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find target) in
+  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find target) in
   let units =
     List.map (fun (name, text) -> (name, Rivet_foundation.Span.source ~name ~contents:text)) units
   in
@@ -461,7 +461,7 @@ let%expect_test "an image lowered for another target is refused before anything 
 
 let%expect_test "the host's own target tag is accepted" =
   Printf.printf "tag is host: %b, result %Ld\n"
-    ((Image.plan_of return42).target = host)
+    ((Rivet_image.plan_of return42).target = host)
     (Result.get_ok (Native_exec.run return42 ~io:(io_of_string ""))).value;
   [%expect {| tag is host: true, result 42 |}]
 
@@ -565,8 +565,8 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
       | Ok laid ->
           let text =
             List.find
-              (fun (s : Image.segment_plan) -> s.seg_name = ".text")
-              (Image.plan_of laid).segments
+              (fun (s : Rivet_image.segment_plan) -> s.seg_name = ".text")
+              (Rivet_image.plan_of laid).segments
           in
           Printf.printf "%s: assembles, .text %d bytes\n" target text.init_size
       | Error e -> print_endline (Rivet_foundation.Diag.render e))
@@ -688,18 +688,18 @@ let%expect_test "a writable executable segment loads only when the image was pla
     }
   in
   let plan policy =
-    Image.plan_image
+    Rivet_image.plan_image
       ~evaluate:(fun () ~place:_ ~target:_ -> Ok 0L)
-      { policy with Image.entry_symbol = Some "entry" }
+      { policy with Rivet_image.entry_symbol = Some "entry" }
       [ m ]
   in
-  (match plan Image.default_policy with
+  (match plan Rivet_image.default_policy with
   | Error ds ->
       List.iter
         (fun d -> print_endline (Rivet_foundation.Diagnostic.code d))
         (Rivet_foundation.Diag.diagnostics ds)
   | Ok _ -> print_endline "planned");
-  (match plan { Image.default_policy with allow_rwx = true } with
+  (match plan { Rivet_image.default_policy with allow_rwx = true } with
   | Error _ -> print_endline "refused"
   | Ok l -> (
       match Native_exec.load l with

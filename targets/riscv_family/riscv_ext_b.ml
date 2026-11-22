@@ -3,7 +3,7 @@
    extensions (Zk, Zkn, Zks) are the sums of the leaf extensions below and are modelled as
    implications, so a mnemonic's alternatives name only leaf extensions. *)
 
-module Req = Target_component.Req
+module Req = Rivet_target_features.Component.Req
 
 let alternatives = Riscv_ops.alternatives
 

@@ -4,7 +4,7 @@
 
 open Arm_encode
 
-module type REGS = Target_encode.REGS
+module type REGS = Rivet_target_encode.REGS
 
 let laws (type t) (module R : REGS with type t = t) =
   let probe = List.init 66 (fun n -> n - 1) in

@@ -12,7 +12,7 @@ val set_trace_policy : unit -> unit
 val targets : string list
 
 val dump :
-  ?features:Target_config.spec ->
+  ?features:Rivet_target_features.Config.spec ->
   String.t ->
   which:[< `Lowered_ast | `Normalized_ast | `Source_ast | `Tokens ] ->
   unit_name:string ->
@@ -21,12 +21,12 @@ val dump :
 
 val dump_codec : String.t -> (string, error) Err.t
 
-type planned = { laid_out : Image.laid_out; target : string }
+type planned = { laid_out : Rivet_image.laid_out; target : string }
 
-type request = Target_intf.Target.request = {
+type request = Rivet_target_intf.Target.request = {
   entry : string option;
-  features : Target_config.spec option;
-  max_features : Target_config.spec option;
+  features : Rivet_target_features.Config.spec option;
+  max_features : Rivet_target_features.Config.spec option;
   externs : string list;
   exported : string list option;
   max_size : int option;
@@ -49,7 +49,7 @@ val plan_text : planned -> string
 val fixup_observations : planned -> string list
 val segments : planned -> (string * int * int * int) list
 
-type bound = { image : Image.t; target : string }
+type bound = { image : Rivet_image.t; target : string }
 
 type bind_request = {
   imports : (string * int64) list;  (** addresses of the module's [externs] *)
@@ -63,7 +63,7 @@ val bind_with :
   bind_request -> planned -> addresses:(string * int64) list -> (bound, error Err.Error.t) result
 
 val bind : planned -> addresses:(string * int64) list -> (bound, error Err.Error.t) result
-val planned_segments : planned -> Image.segment_plan list
+val planned_segments : planned -> Rivet_image.segment_plan list
 val bind_at : planned -> base:int64 -> (bound, error) Err.t
 val bind_sequential : planned -> base:int64 -> gap:int -> (bound, error Err.Error.t) result
 val image_text : bound -> string
@@ -88,7 +88,7 @@ type manifest = {
 val manifest : bound -> manifest
 
 val disassemble_for :
-  ?features:Target_config.spec ->
+  ?features:Rivet_target_features.Config.spec ->
   String.t ->
   mode:[< `Canonical | `Diagnostic ] ->
   address:int64 ->
@@ -100,12 +100,12 @@ val disassemble :
   bound -> mode:[< `Canonical | `Diagnostic ] -> address:int64 -> string -> (string, error) Err.t
 
 val disassemble_records_for :
-  ?features:Target_config.spec ->
+  ?features:Rivet_target_features.Config.spec ->
   ?inspect:bool ->
   String.t ->
   address:int64 ->
   string ->
-  (Target_intf.Target.disasm_record list, error) Err.t
+  (Rivet_target_intf.Target.disasm_record list, error) Err.t
 (** the records both disassembly modes are rendered from, for a named target *)
 
 val disassemble_records :
@@ -113,11 +113,14 @@ val disassemble_records :
   bound ->
   address:int64 ->
   string ->
-  (Target_intf.Target.disasm_record list, error) Err.t
+  (Rivet_target_intf.Target.disasm_record list, error) Err.t
 
 val listing : ?inspect:bool -> bound -> segment:string -> (string, error) Err.t
 (** one segment of a bound image disassembled, with symbols at their definitions and beside the
     instructions whose fixups name them *)
 
 val listing_records :
-  ?inspect:bool -> bound -> segment:string -> (Target_intf.Target.listing_line list, error) Err.t
+  ?inspect:bool ->
+  bound ->
+  segment:string ->
+  (Rivet_target_intf.Target.listing_line list, error) Err.t

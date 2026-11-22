@@ -108,7 +108,7 @@ let address_for profile section =
   | ".data" -> Abi.data_addr profile
   (* M3 (docs/design.md §12): a real NOBITS section is now possible, so it
      needs its own address rather than aliasing .data's - two segments at one
-     address was exactly M1's silent behavior Image.bind_image no longer
+     address was exactly M1's silent behavior Rivet_image.bind_image no longer
      tolerates once more than one segment can be nonempty (image.ml's
      overlap check). Abi_v2.bss_addr, not a new Abi (v1) constant: BSS
      placement is a policy decision, not a wire-format one, and v1 is frozen
@@ -129,7 +129,7 @@ let units_of dir =
 
 let assemble profile case =
   let name = target_of_profile profile in
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find name with Some d -> d | None -> failwith ("no such target: " ^ name)
   in
   let dir = Filename.concat (Filename.concat corpus_root case) name in
@@ -148,13 +148,14 @@ let assemble profile case =
   match result with
   | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
         List.map
-          (fun (s : Image.segment_plan) -> (s.Image.seg_name, address_for profile s.Image.seg_name))
-          plan.Image.segments
+          (fun (s : Rivet_image.segment_plan) ->
+            (s.Rivet_image.seg_name, address_for profile s.Rivet_image.seg_name))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
       | Ok img -> Ok img)
 
@@ -175,8 +176,8 @@ let assemble profile case =
    This lives here and not in [Manifest] on purpose: asm_oracle reaches no part
    of the assembler, so that a broken assembler cannot make the ABI conformance
    suite pass. *)
-let manifest_of_image profile (img : Image.t) ~expected ~observations =
-  match img.Image.entry with
+let manifest_of_image profile (img : Rivet_image.t) ~expected ~observations =
+  match img.Rivet_image.entry with
   | None -> Error "the image has no entry symbol, so there is no address to enter it at"
   | Some entry_addr ->
       Ok
@@ -191,18 +192,19 @@ let manifest_of_image profile (img : Image.t) ~expected ~observations =
           observations;
           segments =
             List.map
-              (fun (s : Image.segment) ->
+              (fun (s : Rivet_image.segment) ->
                 {
-                  Manifest.vaddr = s.Image.address;
-                  init = s.Image.bytes;
-                  zero_len = Int64.of_int s.Image.zero_fill;
-                  align = max 16 s.Image.alignment;
+                  Manifest.vaddr = s.Rivet_image.address;
+                  init = s.Rivet_image.bytes;
+                  zero_len = Int64.of_int s.Rivet_image.zero_fill;
+                  align = max 16 s.Rivet_image.alignment;
                   perms =
-                    ((if Rivet_asm_core.Perms.readable s.Image.perms then Abi.perm_r else 0)
-                    lor (if Rivet_asm_core.Perms.writable s.Image.perms then Abi.perm_w else 0)
-                    lor if Rivet_asm_core.Perms.executable s.Image.perms then Abi.perm_x else 0);
+                    ((if Rivet_asm_core.Perms.readable s.Rivet_image.perms then Abi.perm_r else 0)
+                    lor (if Rivet_asm_core.Perms.writable s.Rivet_image.perms then Abi.perm_w else 0)
+                    lor
+                    if Rivet_asm_core.Perms.executable s.Rivet_image.perms then Abi.perm_x else 0);
                 })
-              img.Image.segments;
+              img.Rivet_image.segments;
         }
 
 (* {1 The induced-failure control}
@@ -290,14 +292,15 @@ let report label = function
       incr failures;
       Printf.printf "  FAIL %-24s %s\n" label why
 
-let describe (img : Image.t) =
+let describe (img : Rivet_image.t) =
   String.concat ", "
     (List.map
-       (fun (s : Image.segment) ->
-         Printf.sprintf "%s %d bytes at 0x%Lx %s" s.Image.name (String.length s.Image.bytes)
-           s.Image.address
-           (Rivet_asm_core.Perms.to_string s.Image.perms))
-       img.Image.segments)
+       (fun (s : Rivet_image.segment) ->
+         Printf.sprintf "%s %d bytes at 0x%Lx %s" s.Rivet_image.name
+           (String.length s.Rivet_image.bytes)
+           s.Rivet_image.address
+           (Rivet_asm_core.Perms.to_string s.Rivet_image.perms))
+       img.Rivet_image.segments)
 
 (* M4 Phase 9: an opt-in retry with QEMU's own tracing, decided here rather
    than inside [Qemu_user.run] - [run_control]'s own induced "41 instead of
@@ -380,7 +383,7 @@ let run_case profile case =
     | Ok img -> (
         Printf.printf "  %s: %s\n" case (describe img);
         (* Symbol resolution happens here, against this specific build's
-           [Image.exports] - the wire protocol itself has no symbolic
+           [Rivet_image.exports] - the wire protocol itself has no symbolic
            observation (docs/exec-abi-v3.md), only [vaddr]/[width]/
            [sign_extend]. A declared symbol absent from the built image is a
            hard failure, not a silently skipped observation: the manifest
@@ -391,7 +394,7 @@ let run_case profile case =
               match acc with
               | Error _ as e -> e
               | Ok acc -> (
-                  match List.assoc_opt symbol img.Image.exports with
+                  match List.assoc_opt symbol img.Rivet_image.exports with
                   | Some obs_vaddr -> Ok ({ Manifest.obs_vaddr; width; sign_extend } :: acc)
                   | None ->
                       Error
@@ -442,14 +445,16 @@ let run_control profile =
       incr failures;
       Printf.printf "  FAIL %-24s %s\n" "induced-failure control" why
   | Ok img -> (
-      match img.Image.segments with
+      match img.Rivet_image.segments with
       | [ s ] -> (
-          match mutate profile s.Image.bytes with
+          match mutate profile s.Rivet_image.bytes with
           | Error m ->
               incr failures;
               Printf.printf "  FAIL %-24s %s\n" "induced-failure control" m
           | Ok mutated -> (
-              let img = { img with Image.segments = [ { s with Image.bytes = mutated } ] } in
+              let img =
+                { img with Rivet_image.segments = [ { s with Rivet_image.bytes = mutated } ] }
+              in
               match manifest_of_image profile img ~expected:[ 42L ] ~observations:[] with
               | Error why ->
                   incr failures;

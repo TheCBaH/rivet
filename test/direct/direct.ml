@@ -51,16 +51,16 @@ let () =
       | Ok laid -> (
           let addresses =
             List.map
-              (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L))
-              (Image.plan_of laid).Image.segments
+              (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+              (Rivet_image.plan_of laid).Rivet_image.segments
           in
-          match Image.bind_image laid ~addresses with
+          match Rivet_image.bind_image laid ~addresses with
           | Error _ -> print_endline "bind failed"
           | Ok image ->
               List.iter
-                (fun (s : Image.segment) ->
-                  Printf.printf "%Lx:%s\n" s.Image.address
+                (fun (s : Rivet_image.segment) ->
+                  Printf.printf "%Lx:%s\n" s.Rivet_image.address
                     (String.concat ""
-                       (List.init (String.length s.Image.bytes) (fun i ->
-                            Printf.sprintf "%02x" (Char.code s.Image.bytes.[i])))))
-                image.Image.segments))
+                       (List.init (String.length s.Rivet_image.bytes) (fun i ->
+                            Printf.sprintf "%02x" (Char.code s.Rivet_image.bytes.[i])))))
+                image.Rivet_image.segments))

@@ -9,7 +9,7 @@
  (public_name rivet.i8080_ops)
  (modules i8080_ops)
  (modes byte native)
- (libraries compute)
+ (libraries rivet_compute)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -21,11 +21,11 @@
  (libraries
   i8080_ops
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
-  target_error
-  target_encode
-  target_features)
+  rivet_target_error
+  rivet_target_encode
+  rivet_target_features)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -36,10 +36,10 @@
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  target_intf
+  rivet_target_intf
   i8080_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
@@ -49,7 +49,12 @@
  (public_name rivet.i8080_asm)
  (modules i8080_asm)
  (modes byte native)
- (libraries rivet_foundation rivet_asm_core image driver_direct i8080_encode)
+ (libraries
+  rivet_foundation
+  rivet_asm_core
+  rivet_image
+  driver_direct
+  i8080_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -62,7 +67,7 @@
   rivet_foundation
   rivet_asm_core
   rivet_asm_syntax
-  image
+  rivet_image
   text_pipeline
   i8080
   i8080_asm)
@@ -83,7 +88,7 @@
  (public_name rivet.i8080_sem)
  (modules i8080_sem)
  (modes byte native)
- (libraries compute i8080_ops)
+ (libraries rivet_compute i8080_ops)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

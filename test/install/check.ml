@@ -22,11 +22,11 @@ let expect what got want =
 
 let image_of low =
   let l = ok (P.plan low) in
-  let plan = Image.plan_of l in
+  let plan = Rivet_image.plan_of l in
   let addresses =
-    List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
+    List.map (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0L)) plan.Rivet_image.segments
   in
-  Fmt.to_to_string Image.pp (ok (Image.bind_image l ~addresses))
+  Fmt.to_to_string Rivet_image.pp (ok (Rivet_image.bind_image l ~addresses))
 
 let () =
   let parsed, state = C.from_text () in

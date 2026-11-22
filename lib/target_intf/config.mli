@@ -1,6 +1,6 @@
 (** The feature configuration a target assembles under.
 
-    A configuration is the set of optional components (see {!Target_component}) that are enabled.
+    A configuration is the set of optional components (see {!Component}) that are enabled.
     It is validated once, at the boundary where external feature names arrive, and is a plain
     value from then on: everything below that boundary asks {!enabled} and never re-parses a name.
 
@@ -42,18 +42,18 @@ val parse_spec : string -> (spec, string) result
 
 val spec_to_string : spec -> string
 
-val default : Target_component.t list -> t
+val default : Component.t list -> t
 (** The default configuration: the applicable components marked [default_on], closed under
     requirements and implications. *)
 
-val all_enabled : Target_component.t list -> t
+val all_enabled : Component.t list -> t
 (** Every applicable component, conflicts ignored. Not a valid configuration; for inspection
     to discover which instructions exist, never for assembling. *)
 
-val resolve : Target_component.t list -> spec -> (t, string) result
+val resolve : Component.t list -> spec -> (t, string) result
 (** Apply a spec to the default configuration of these components. *)
 
-val apply : Target_component.t list -> t -> spec -> (t, string) result
+val apply : Component.t list -> t -> spec -> (t, string) result
 (** Apply a spec to an existing configuration, with the same policy as {!resolve}: the removals
     that guard implications are those of this spec alone, and the result is validated. Used by
     sources that change the set mid-assembly. *)

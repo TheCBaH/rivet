@@ -42,7 +42,7 @@ type key =
       (** M4: the host-side observation descriptor -
           ["<symbol> <width> <sign-extend:0|1>"] - that produces
           {!Expected_value} of the same index. [symbol] is resolved against a
-          built [Image.exports] at exec time, not here. *)
+          built [Rivet_image.exports] at exec time, not here. *)
   | Origin of string
       (** M4: a unit whose committed [<target>/<stem>.s] is preprocessed from an
           upstream, not-project-authored [.S] source (e.g. a runtime

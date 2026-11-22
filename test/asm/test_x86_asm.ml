@@ -5,7 +5,7 @@
 
 open X86_family_encode
 
-module type REGS = Target_encode.REGS
+module type REGS = Rivet_target_encode.REGS
 
 let check ?(upper = false) (type t) mode registers (module R : REGS with type t = t) to_reg cls =
   let range = List.filter R.mem (List.init 66 (fun n -> n - 1)) in

@@ -75,10 +75,10 @@ let owns mnemonic =
   || String.equal mnemonic fadd_st0.mnemonic
   || List.exists (fun (f : fixed_form) -> String.equal f.mnemonic mnemonic) fixed_forms
 
-let component : Target_component.t =
+let component : Rivet_target_features.Component.t =
   let form ~label ~mnemonic ~source =
     {
-      Target_component.label;
+      Rivet_target_features.Component.label;
       mnemonics = [ mnemonic ];
       sources = [ { upstream = "xed"; name = source } ];
       legal = None;

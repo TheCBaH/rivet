@@ -4,7 +4,7 @@
 
 module C = Gnu_text_corpus
 
-let riscv32 = (module C.P : Target_intf.Target.DRIVER)
+let riscv32 = (module C.P : Rivet_target_intf.Target.DRIVER)
 
 let%expect_test "every RV32 corpus case reads back from its GNU print" =
   let cases = C.load "../../fixtures/isa-difficult/cases.jsonl" in
@@ -47,7 +47,7 @@ let vendor : Ext.Validated.t =
       source = "vendor/xfoo";
     }
   in
-  let component : Target_component.t =
+  let component : Rivet_target_features.Component.t =
     {
       id = "vendor.xfoo";
       feature = "xfoo";
@@ -61,7 +61,7 @@ let vendor : Ext.Validated.t =
       forms =
         [
           {
-            Target_component.label = "xfoo";
+            Rivet_target_features.Component.label = "xfoo";
             mnemonics = [ "xfoo" ];
             sources = [ { upstream = "vendor"; name = "xfoo" } ];
             legal = None;
@@ -84,7 +84,9 @@ module VP = Pipeline.Make (V)
 
 let%expect_test "a vendor row reads back from its GNU print" =
   let features =
-    match Target_config.parse_spec "+xfoo" with Ok s -> Some s | Error m -> failwith m
+    match Rivet_target_features.Config.parse_spec "+xfoo" with
+    | Ok s -> Some s
+    | Error m -> failwith m
   in
   let source =
     {|
@@ -110,7 +112,7 @@ let%expect_test "a vendor row reads back from its GNU print" =
     | Error ds, _ | _, Error ds -> C.render ds
   in
   print_string text;
-  let vp = (module VP : Target_intf.Target.DRIVER) in
+  let vp = (module VP : Rivet_target_intf.Target.DRIVER) in
   let bytes t = Result.map C.hex (C.assemble ?features vp t) in
   print_endline
     (match (bytes source, bytes text) with
@@ -132,7 +134,7 @@ let%expect_test "a vendor row reads back from its GNU print" =
 
 (* A numeric local label reads back on every target with a GNU printer. *)
 let%expect_test "local labels read back from the GNU print on x86-64 and AArch64" =
-  let check (type i) (module D : Target_intf.Target.DRIVER) ~type_char
+  let check (type i) (module D : Rivet_target_intf.Target.DRIVER) ~type_char
       ~(simplify :
          Rivet_foundation.Span.source -> (i Rivet_asm_core.Normalized_ast.module_, string) result)
       ~(instruction : i Fmt.t) source =
@@ -206,7 +208,7 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
    parenthesised where an operand would start, so the print reads back; the bytes are the ones
    x86_64-linux-gnu-as and i686-linux-gnu-as 2.44 produce for the same source bound at 0. *)
 let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
-  let check (type i) (module D : Target_intf.Target.DRIVER) ~parse ~simplify ~state
+  let check (type i) (module D : Rivet_target_intf.Target.DRIVER) ~parse ~simplify ~state
       ~(instruction : i Fmt.t) source =
     let src = Rivet_foundation.Span.source ~name:"d.s" ~contents:source in
     match parse ~unit_name:"d" ~source:src with

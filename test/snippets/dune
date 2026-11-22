@@ -41,8 +41,8 @@
  (libraries
   rivet_foundation
   rivet_asm_core
-  image
-  target_encode
+  rivet_image
+  rivet_target_encode
   asm_oracle
   x86_32_encode
   x86_64_encode

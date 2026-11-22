@@ -1,7 +1,7 @@
-(* [Compute.Concrete64]: the edges of 64 bits, which the property tests in test/compute_props
+(* [Rivet_compute.Concrete64]: the edges of 64 bits, which the property tests in test/compute_props
    cover in bulk. *)
 
-module C = Compute.Concrete64
+module C = Rivet_compute.Concrete64
 
 let hex = Printf.printf "%Lx\n"
 
@@ -96,7 +96,7 @@ let%expect_test "const, ite, to_int and the width limits" =
     9
     1073741823 none none |}]
 
-module M = Compute.Sparse_memory
+module M = Rivet_compute.Sparse_memory
 
 let%expect_test "Sparse_memory allocates on write, reads zero elsewhere" =
   let m = M.create () in

@@ -2,7 +2,7 @@
    and lowered forms. The encoder ({!Arm_encode}) builds on them, and so does the per-opcode table
    ({!Arm_ops}), which sits between the two. *)
 
-module C = Codec
+module C = Rivet_codec
 
 module Reg : sig
   type t = { num : int }

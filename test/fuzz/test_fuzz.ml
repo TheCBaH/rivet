@@ -226,7 +226,7 @@ let driver name =
   match Driver.Registry.find name with Some d -> d | None -> failwith ("no target " ^ name)
 
 (* Planning must not allocate without bound on a stray `.zero 99999999999`. *)
-let request = { Target_intf.Target.default_request with max_size = Some (1 lsl 24) }
+let request = { Rivet_target_intf.Target.default_request with max_size = Some (1 lsl 24) }
 
 let guard what f =
   try f () with
@@ -234,7 +234,7 @@ let guard what f =
   | e -> Q.Test.fail_reportf "%s raised %s" what (Printexc.to_string e)
 
 let text_law name text =
-  let (module D : Target_intf.Target.DRIVER) = driver name in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver name in
   let source = Rivet_foundation.Span.source ~name:"fuzz.s" ~contents:text in
   let render = function Ok _ -> () | Error ds -> ignore (Rivet_foundation.Diag.render ds) in
   guard "dump_tokens" (fun () -> render (D.dump_tokens ~source));
@@ -246,13 +246,14 @@ let text_law name text =
       match D.assemble_request request ~unit_name:"fuzz" ~source () with
       | Error ds -> ignore (Rivet_foundation.Diag.render ds)
       | Ok laid_out ->
-          let plan = Image.plan_of laid_out in
+          let plan = Rivet_image.plan_of laid_out in
           let addresses =
             List.mapi
-              (fun i (s : Image.segment_plan) -> (s.Image.seg_name, Int64.of_int (i * 0x1000000)))
-              plan.Image.segments
+              (fun i (s : Rivet_image.segment_plan) ->
+                (s.Rivet_image.seg_name, Int64.of_int (i * 0x1000000)))
+              plan.Rivet_image.segments
           in
-          render (Image.bind_image laid_out ~addresses));
+          render (Rivet_image.bind_image laid_out ~addresses));
   true
 
 (* The canonical dump is the instructions only. Compressed RISC-V code needs the permission to be
@@ -272,7 +273,7 @@ let refused = ref 0
 let rec bytes_law name bytes = try bytes_law_exn name bytes with Exit -> true
 
 and bytes_law_exn name bytes =
-  let (module D : Target_intf.Target.DRIVER) = driver name in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver name in
   let assemble what text =
     let source =
       Rivet_foundation.Span.source ~name:"re.s" ~contents:("\t.text\n" ^ prelude name ^ text)
@@ -286,11 +287,13 @@ and bytes_law_exn name bytes =
           Q.Test.fail_reportf "canonical text does not re-assemble:@.%s@.%s" text
             (Rivet_foundation.Diag.render ds)
     | Ok laid_out -> (
-        let plan = Image.plan_of laid_out in
+        let plan = Rivet_image.plan_of laid_out in
         let addresses =
-          List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L)) plan.Image.segments
+          List.map
+            (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+            plan.Rivet_image.segments
         in
-        match Image.bind_image laid_out ~addresses with
+        match Rivet_image.bind_image laid_out ~addresses with
         | Error ds ->
             (* An absolute branch target in the text drifts when a re-assembled
                instruction changes length, and can leave a short branch's reach. *)
@@ -300,8 +303,8 @@ and bytes_law_exn name bytes =
             else
               Q.Test.fail_reportf "canonical text does not bind:@.%s@.%s" text
                 (Rivet_foundation.Diag.render ds)
-        | Ok { Image.segments = []; _ } -> ""
-        | Ok { Image.segments = s :: _; _ } -> s.Image.bytes)
+        | Ok { Rivet_image.segments = []; _ } -> ""
+        | Ok { Rivet_image.segments = s :: _; _ } -> s.Rivet_image.bytes)
   in
   let dump b = D.dump_disasm_canonical ~address:0x1000L b in
   (* Known gap: some 0x66 (16-bit operand) x86 forms decode with a length their assembled
@@ -385,14 +388,14 @@ let regressions () =
   in
   List.iter
     (fun (name, bytes) ->
-      let (module D : Target_intf.Target.DRIVER) = driver name in
+      let (module D : Rivet_target_intf.Target.DRIVER) = driver name in
       match D.dump_disasm_canonical ~address:0x1000L bytes with
       | Error _ -> ()
       | Ok text -> fail "%s %S decodes to %S, should be refused" name bytes text)
     refused_bytes;
   List.iter
     (fun (name, text) ->
-      let (module D : Target_intf.Target.DRIVER) = driver name in
+      let (module D : Rivet_target_intf.Target.DRIVER) = driver name in
       let source =
         Rivet_foundation.Span.source ~name:"r.s" ~contents:("\t.text\n\t" ^ text ^ "\n")
       in
@@ -402,7 +405,7 @@ let regressions () =
     refused_text;
   List.iter
     (fun (name, bytes) ->
-      let (module D : Target_intf.Target.DRIVER) = driver name in
+      let (module D : Rivet_target_intf.Target.DRIVER) = driver name in
       match D.dump_disasm_canonical ~address:0x1000L bytes with
       | Error _ -> fail "%s %S no longer decodes" name bytes
       | Ok _ -> (

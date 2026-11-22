@@ -125,8 +125,8 @@
   asm_oracle
   asm_oracle_run
   driver
-  image
-  target_intf
+  rivet_image
+  rivet_target_intf
   rivet_foundation
   rivet_fmt)
  (enabled_if

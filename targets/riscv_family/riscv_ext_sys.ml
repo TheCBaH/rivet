@@ -16,7 +16,7 @@ let table ?(requires = []) ?legal feature summary =
    carries them. *)
 let compressed_too also m =
   if String.starts_with ~prefix:"c." m then
-    Some (Target_component.Req.All [ Feature also.(0); Feature also.(1) ])
+    Some (Rivet_target_features.Component.Req.All [ Feature also.(0); Feature also.(1) ])
   else None
 
 let zicntr = table ~requires:[ "zicsr" ] "zicntr" "base counters and timers"

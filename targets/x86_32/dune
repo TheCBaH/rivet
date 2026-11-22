@@ -10,10 +10,10 @@
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
-  target_error
-  target_encode
+  rivet_target_error
+  rivet_target_encode
   x86_family_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
@@ -25,9 +25,9 @@
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
-  target_intf
+  rivet_target_intf
   x86_family
   x86_32_encode)
  (enabled_if

@@ -303,7 +303,7 @@ let%expect_test "no lowering reaches an opcode without fields for its format" =
                 (fun l ->
                   match E.encode_ungated l with
                   | Error e -> (
-                      match Err.Error.kind e |> Target_error.kind with
+                      match Err.Error.kind e |> Rivet_target_error.kind with
                       | `Format_mismatch _ -> true
                       | _ -> false)
                   | Ok _ -> false)
@@ -554,7 +554,7 @@ let%expect_test "lowering errors name their opcode" =
     match E.lower_instruction E.default_state insn with
     | Ok _ -> "accepted"
     | Error e -> (
-        match Target_error.kind (Err.Error.kind e) with
+        match Rivet_target_error.kind (Err.Error.kind e) with
         | `Rv64_only E.Opcode.Ld -> "Rv64_only Ld"
         | `Wrong_operands E.Opcode.Add -> "Wrong_operands Add"
         | _ -> "other")

@@ -2,7 +2,7 @@
 
    {!Arm_encode} is the rest of the target - the instruction types and
    everything that turns one into bytes - and this file is what {!Target.TARGET}
-   adds on top of {!Target_encode.ENCODE}: a lexical profile, an operand parser,
+   adds on top of {!Rivet_target_encode.ENCODE}: a lexical profile, an operand parser,
    and a directive handler. The two are separate libraries so that a consumer
    which builds A32 instructions as values rather than reading them links the
    encoder alone, with no lexer and no Menhir table behind it.
@@ -17,7 +17,7 @@ include Arm_encode
 
 (* The front end's error domain (docs/errors.md). Separate from the
    encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
-   {!Target_intf.Target.TARGET} for why that split exists. *)
+   {!Rivet_target_intf.Target.TARGET} for why that split exists. *)
 type parse_error_kind =
   [ `Unknown_register of string
   | `Unknown_shift of string
@@ -37,7 +37,7 @@ and cannot_parse = {
   reason : Rivet_asm_syntax.Parse_lines.error_kind;
 }
 
-type parse_error = parse_error_kind Target_error.t
+type parse_error = parse_error_kind Rivet_target_error.t
 
 let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Unknown_register n -> Fmt.pf ppf "unknown register %s" n
@@ -59,15 +59,15 @@ let parse_error_kind_code : parse_error_kind -> string = function
     ->
       "arm.operand"
 
-let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
-let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+let pp_parse_error ppf e = pp_parse_error_kind ppf (Rivet_target_error.kind e)
+let parse_error_code e = parse_error_kind_code (Rivet_target_error.kind e)
 
 let parse_error_diagnostic e =
-  Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+  Rivet_target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
 
 let parse_diag ?pos ?origin kind =
   Err.Error.make ?pos ~pp_error:pp_parse_error
-    (Target_error.make
+    (Rivet_target_error.make
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"arm" ())
        kind)
 
@@ -468,17 +468,19 @@ let handle_directive ~name ~arguments state =
   | ".syntax" -> (
       let argument = String.concat ", " arguments in
       match Arm_encode.Syntax.of_name (String.trim argument) with
-      | Some syntax -> Target_intf.Target.Handled { state = { state with syntax }; emit = [] }
-      | None -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_syntax argument)))
+      | Some syntax -> Rivet_target_intf.Target.Handled { state = { state with syntax }; emit = [] }
+      | None ->
+          Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_syntax argument)))
   | ".arch" | ".fpu" ->
       (* Accepted for the compiler's preamble; the instruction set does not depend on them. *)
-      Target_intf.Target.Handled { state; emit = [] }
-  | ".arm" -> Target_intf.Target.Handled { state = { state with thumb = false }; emit = [] }
-  | ".thumb" -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Thumb_directive_out_of_scope)
+      Rivet_target_intf.Target.Handled { state; emit = [] }
+  | ".arm" -> Rivet_target_intf.Target.Handled { state = { state with thumb = false }; emit = [] }
+  | ".thumb" ->
+      Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Thumb_directive_out_of_scope)
   | ".eabi_attribute" ->
       (* Recorded as handled and otherwise ignored: it is an ELF attribute, and
          M1 produces no ELF. Rejecting it would fail every the compiler ARM file;
          treating it as unknown would be worse, because then a *misspelled*
          directive and this one would be indistinguishable. *)
-      Target_intf.Target.Handled { state; emit = [] }
-  | _ -> Target_intf.Target.Unhandled
+      Rivet_target_intf.Target.Handled { state; emit = [] }
+  | _ -> Rivet_target_intf.Target.Unhandled

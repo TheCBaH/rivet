@@ -70,22 +70,23 @@ let cases tree target =
 let our_bytes target source_text =
   match Driver.Registry.find target with
   | None -> Error (target ^ ": no such target")
-  | Some (module D : Target_intf.Target.DRIVER) -> (
+  | Some (module D : Rivet_target_intf.Target.DRIVER) -> (
       let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:source_text in
       match D.assemble ~unit_name:"asm_snippet" ~source () with
       | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
       | Ok laid_out -> (
-          let plan = Image.plan_of laid_out in
+          let plan = Rivet_image.plan_of laid_out in
           let addresses =
             List.mapi
-              (fun i (s : Image.segment_plan) -> (s.Image.seg_name, Int64.of_int (i * 0x1000000)))
-              plan.Image.segments
+              (fun i (s : Rivet_image.segment_plan) ->
+                (s.Rivet_image.seg_name, Int64.of_int (i * 0x1000000)))
+              plan.Rivet_image.segments
           in
-          match Image.bind_image laid_out ~addresses with
+          match Rivet_image.bind_image laid_out ~addresses with
           | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
           | Ok img -> (
-              match img.Image.segments with
-              | s :: _ -> Ok s.Image.bytes
+              match img.Rivet_image.segments with
+              | s :: _ -> Ok s.Rivet_image.bytes
               | [] -> Error "the image has no segment")))
 
 type verdict = Agree | Differ of string | Rejected of string | Gas_rejected

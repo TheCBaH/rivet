@@ -2,7 +2,7 @@
 
    {!Aarch64_encode} is the rest of the target - the instruction types and
    everything that turns one into bytes - and this file is what {!Target.TARGET}
-   adds on top of {!Target_encode.ENCODE}: a lexical profile, an operand parser,
+   adds on top of {!Rivet_target_encode.ENCODE}: a lexical profile, an operand parser,
    and a directive handler. The two are separate libraries so that a consumer
    which builds A64 instructions as values rather than reading them links the
    encoder alone, with no lexer and no Menhir table behind it.
@@ -17,7 +17,7 @@ include Aarch64_encode
 
 (* The front end's error domain (docs/errors.md). Separate from the
    encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
-   {!Target_intf.Target.TARGET} for why that split exists. *)
+   {!Rivet_target_intf.Target.TARGET} for why that split exists. *)
 type parse_error_kind =
   [ `Unknown_register of string
   | `Shift_amount_too_wide
@@ -31,7 +31,7 @@ and cannot_parse = {
   reason : Rivet_asm_syntax.Parse_lines.error_kind;
 }
 
-type parse_error = parse_error_kind Target_error.t
+type parse_error = parse_error_kind Rivet_target_error.t
 
 let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Unknown_register n -> Fmt.pf ppf "unknown register %s" n
@@ -47,15 +47,15 @@ let parse_error_kind_code : parse_error_kind -> string = function
   | `Unbalanced_brackets | `Unknown_extend _ ->
       "aarch64.operand"
 
-let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
-let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+let pp_parse_error ppf e = pp_parse_error_kind ppf (Rivet_target_error.kind e)
+let parse_error_code e = parse_error_kind_code (Rivet_target_error.kind e)
 
 let parse_error_diagnostic e =
-  Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+  Rivet_target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
 
 let parse_diag ?pos ?origin kind =
   Err.Error.make ?pos ~pp_error:pp_parse_error
-    (Target_error.make
+    (Rivet_target_error.make
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"aarch64" ())
        kind)
 
@@ -441,5 +441,5 @@ let handle_directive ~name ~arguments state =
      target implements. It is understood and changes nothing here; any other
      level would widen what may be assembled, so it stays an unknown
      directive rather than being silently accepted. *)
-  | ".arch" when arguments = [ "armv8-a" ] -> Target_intf.Target.Handled { state; emit = [] }
-  | _ -> Target_intf.Target.Unhandled
+  | ".arch" when arguments = [ "armv8-a" ] -> Rivet_target_intf.Target.Handled { state; emit = [] }
+  | _ -> Rivet_target_intf.Target.Unhandled

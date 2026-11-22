@@ -24,10 +24,10 @@
  (libraries
   qcheck-core
   qcheck-core.runner
-  codec
+  rivet_codec
   codec_corpus
   rivet_asm_core
-  image
+  rivet_image
   driver
   rivet_foundation
   rivet_fmt)

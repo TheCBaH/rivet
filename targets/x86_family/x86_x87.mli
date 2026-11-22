@@ -41,4 +41,4 @@ val fadd_st0 : memory_form
 
 val find_memory : string -> memory_form option
 val owns : string -> bool
-val component : Target_component.t
+val component : Rivet_target_features.Component.t

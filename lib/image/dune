@@ -6,7 +6,7 @@
 ; linker that could name a target would be one that could special-case one.
 
 (library
- (name image)
+ (name rivet_image)
  (public_name rivet.image)
  (modes byte native)
  (libraries rivet_foundation rivet_asm_core rivet_fmt)

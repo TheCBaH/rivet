@@ -26,7 +26,7 @@
    strings the boundary produced before.
 
    [`Diagnostics] is the erasure arm, and it is honest about being one: by the
-   time a failure reaches here it has crossed {!Target_intf.Target.DRIVER},
+   time a failure reaches here it has crossed {!Rivet_target_intf.Target.DRIVER},
    which erases the architecture, so a target's own domain cannot survive to
    this point. Wrapping the rendered list keeps the two boundary-local failures
    - which this module detects itself, and which are not diagnostics at all -
@@ -73,14 +73,15 @@ let targets = Registry.names
 let with_driver target f =
   match Registry.find target with
   | None -> fail ~pos:__POS__ (`Unknown_target { requested = target; known = targets })
-  | Some (module D : Target_intf.Target.DRIVER) -> f (module D : Target_intf.Target.DRIVER)
+  | Some (module D : Rivet_target_intf.Target.DRIVER) ->
+      f (module D : Rivet_target_intf.Target.DRIVER)
 
 let source ~unit_name ~text = Rivet_foundation.Span.source ~name:(unit_name ^ ".s") ~contents:text
 
 (* {1 Dumps} *)
 
 let dump ?features target ~which ~unit_name ~text =
-  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       let source = source ~unit_name ~text in
       let r =
         match which with
@@ -92,7 +93,7 @@ let dump ?features target ~which ~unit_name ~text =
       of_stage r)
 
 let dump_codec target =
-  with_driver target (fun (module D : Target_intf.Target.DRIVER) -> Ok (D.dump_codec ()))
+  with_driver target (fun (module D : Rivet_target_intf.Target.DRIVER) -> Ok (D.dump_codec ()))
 
 (* {1 Plan and bind}
 
@@ -100,12 +101,12 @@ let dump_codec target =
    handing back the plan *and* a token that only [bind] accepts is what stops a
    caller from binding one module's addresses onto another module's layout. *)
 
-type planned = { laid_out : Image.laid_out; target : string }
+type planned = { laid_out : Rivet_image.laid_out; target : string }
 
-type request = Target_intf.Target.request = {
+type request = Rivet_target_intf.Target.request = {
   entry : string option;
-  features : Target_config.spec option;
-  max_features : Target_config.spec option;
+  features : Rivet_target_features.Config.spec option;
+  max_features : Rivet_target_features.Config.spec option;
   externs : string list;
   exported : string list option;
   max_size : int option;
@@ -113,10 +114,10 @@ type request = Target_intf.Target.request = {
   group_sections : bool;
 }
 
-let default_request = Target_intf.Target.default_request
+let default_request = Rivet_target_intf.Target.default_request
 
 let assemble_with request target ~unit_name ~text =
-  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       match D.assemble_request request ~unit_name ~source:(source ~unit_name ~text) () with
       | Error ds -> of_stage (Error ds)
       | Ok laid_out -> Ok { laid_out; target })
@@ -125,12 +126,12 @@ let assemble ?entry target ~unit_name ~text =
   assemble_with { default_request with entry } target ~unit_name ~text
 
 (* M3's multi-module entry point, returning the same [planned] type
-   [assemble] does - [Image.laid_out] is already architecture-erased and
+   [assemble] does - [Rivet_image.laid_out] is already architecture-erased and
    already carries however many inputs went into it, so nothing downstream
    ([plan_text], [bind], [fixup_observations]) needs a second version of
    itself just because this one exists. *)
 let assemble_many_with request target (sources : (string * string) list) =
-  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       let sources =
         List.map (fun (unit_name, text) -> (unit_name, source ~unit_name ~text)) sources
       in
@@ -141,24 +142,27 @@ let assemble_many_with request target (sources : (string * string) list) =
 let assemble_many ?entry target sources =
   assemble_many_with { default_request with entry } target sources
 
-let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
+let plan_text p = Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of p.laid_out)
 
 (* Rendered rather than structured, for the same reason diagnostics are: the
    caller on the far side of this boundary is JavaScript, and one line per
    observation in the oracle's own column order is what it would have to
-   marshal [Image.fixup_observation] into anyway. *)
+   marshal [Rivet_image.fixup_observation] into anyway. *)
 let fixup_observations p =
   Rivet_foundation.Safe_list.map
-    (fun o -> Fmt.to_to_string Image.pp_observation o)
-    (Image.fixup_observations p.laid_out)
+    (fun o -> Fmt.to_to_string Rivet_image.pp_observation o)
+    (Rivet_image.fixup_observations p.laid_out)
 
 let segments p =
   List.map
-    (fun (s : Image.segment_plan) ->
-      (s.Image.seg_name, s.Image.init_size, s.Image.zero_fill, s.Image.alignment))
-    (Image.plan_of p.laid_out).Image.segments
+    (fun (s : Rivet_image.segment_plan) ->
+      ( s.Rivet_image.seg_name,
+        s.Rivet_image.init_size,
+        s.Rivet_image.zero_fill,
+        s.Rivet_image.alignment ))
+    (Rivet_image.plan_of p.laid_out).Rivet_image.segments
 
-type bound = { image : Image.t; target : string }
+type bound = { image : Rivet_image.t; target : string }
 
 type bind_request = {
   imports : (string * int64) list;
@@ -171,14 +175,14 @@ let default_bind_request = { imports = []; overlays = []; load_addresses = [] }
 let bind_with (r : bind_request) p ~addresses =
   match
     of_stage
-      (Image.bind_image ~imports:r.imports ~overlays:r.overlays ~load_addresses:r.load_addresses
-         p.laid_out ~addresses)
+      (Rivet_image.bind_image ~imports:r.imports ~overlays:r.overlays
+         ~load_addresses:r.load_addresses p.laid_out ~addresses)
   with
   | Error _ as e -> e
   | Ok image -> Ok { image; target = p.target }
 
 let bind p ~addresses = bind_with default_bind_request p ~addresses
-let planned_segments p = (Image.plan_of p.laid_out).Image.segments
+let planned_segments p = (Rivet_image.plan_of p.laid_out).Rivet_image.segments
 
 (* The common case, spelled out so a caller with one section does not have to
    build an association list to say the obvious thing.
@@ -191,10 +195,11 @@ let planned_segments p = (Image.plan_of p.laid_out).Image.segments
    A caller that wants one is [bind_sequential]. *)
 let bind_at p ~base =
   match planned_segments p with
-  | [ s ] -> bind p ~addresses:[ (s.Image.seg_name, base) ]
+  | [ s ] -> bind p ~addresses:[ (s.Rivet_image.seg_name, base) ]
   | segments ->
       fail ~pos:__POS__
-        (`Bind_multi_segment (List.map (fun (s : Image.segment_plan) -> s.Image.seg_name) segments))
+        (`Bind_multi_segment
+           (List.map (fun (s : Rivet_image.segment_plan) -> s.Rivet_image.seg_name) segments))
 
 (* The documented deterministic multi-segment layout: segments in plan order,
    each aligned up from the end of the previous one plus [gap]. Deterministic is
@@ -210,21 +215,23 @@ let bind_sequential p ~base ~gap =
   in
   let _, addresses =
     List.fold_left
-      (fun (at, acc) (s : Image.segment_plan) ->
-        let a = align_up at s.Image.alignment in
+      (fun (at, acc) (s : Rivet_image.segment_plan) ->
+        let a = align_up at s.Rivet_image.alignment in
         ( Int64.add
-            (Int64.add a (Int64.of_int (s.Image.init_size + s.Image.zero_fill)))
+            (Int64.add a (Int64.of_int (s.Rivet_image.init_size + s.Rivet_image.zero_fill)))
             (Int64.of_int gap),
-          (s.Image.seg_name, a) :: acc ))
+          (s.Rivet_image.seg_name, a) :: acc ))
       (base, []) (planned_segments p)
   in
   bind p ~addresses:(List.rev addresses)
 
-let image_text b = Fmt.to_to_string Image.pp b.image
+let image_text b = Fmt.to_to_string Rivet_image.pp b.image
 
 let section_bytes b name =
   match
-    List.find_opt (fun (s : Image.segment) -> String.equal s.Image.name name) b.image.Image.segments
+    List.find_opt
+      (fun (s : Rivet_image.segment) -> String.equal s.Rivet_image.name name)
+      b.image.Rivet_image.segments
   with
   (* A NOBITS segment's [bytes] holds only its real ([init_size]) prefix -
      always empty until common-symbol storage exists (§7) - so a caller that
@@ -232,11 +239,11 @@ let section_bytes b name =
      followed by [zero_fill] zero bytes, rather than having to special-case
      the segment kind itself. A no-op for every PROGBITS segment, since
      [zero_fill] is 0 there. *)
-  | Some s -> Some (s.Image.bytes ^ String.make s.Image.zero_fill '\000')
+  | Some s -> Some (s.Rivet_image.bytes ^ String.make s.Rivet_image.zero_fill '\000')
   | None -> None
 
-let entry b = b.image.Image.entry
-let exports b = b.image.Image.exports
+let entry b = b.image.Rivet_image.entry
+let exports b = b.image.Rivet_image.exports
 
 (* {1 Manifest}
 
@@ -271,24 +278,24 @@ type manifest = {
 let manifest (b : bound) =
   {
     target = b.target;
-    entry = b.image.Image.entry;
-    exports = b.image.Image.exports;
+    entry = b.image.Rivet_image.entry;
+    exports = b.image.Rivet_image.exports;
     segments =
       List.map
-        (fun (s : Image.segment) ->
+        (fun (s : Rivet_image.segment) ->
           {
-            name = s.Image.name;
-            address = s.Image.address;
-            perms = s.Image.perms;
-            bytes = s.Image.bytes ^ String.make s.Image.zero_fill '\000';
+            name = s.Rivet_image.name;
+            address = s.Rivet_image.address;
+            perms = s.Rivet_image.perms;
+            bytes = s.Rivet_image.bytes ^ String.make s.Rivet_image.zero_fill '\000';
           })
-        b.image.Image.segments;
+        b.image.Rivet_image.segments;
   }
 
 (* {1 Disassembly} *)
 
 let disassemble_for ?features target ~mode ~address bytes =
-  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       let r =
         match mode with
         | `Canonical -> D.dump_disasm_canonical ?features ~address bytes
@@ -299,16 +306,16 @@ let disassemble_for ?features target ~mode ~address bytes =
 let disassemble (b : bound) ~mode ~address bytes = disassemble_for b.target ~mode ~address bytes
 
 let disassemble_records_for ?features ?inspect target ~address bytes =
-  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       of_stage (D.disassemble_records ?features ?inspect ~address bytes))
 
 let disassemble_records ?inspect (b : bound) ~address bytes =
   disassemble_records_for ?inspect b.target ~address bytes
 
 let listing ?inspect (b : bound) ~segment =
-  with_driver b.target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver b.target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       of_stage (D.dump_listing ?inspect b.image ~segment))
 
 let listing_records ?inspect (b : bound) ~segment =
-  with_driver b.target (fun (module D : Target_intf.Target.DRIVER) ->
+  with_driver b.target (fun (module D : Rivet_target_intf.Target.DRIVER) ->
       of_stage (D.listing_records ?inspect b.image ~segment))

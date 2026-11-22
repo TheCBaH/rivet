@@ -15,7 +15,7 @@ open Rivet_foundation
 open Rivet_asm_core
 open Rivet_asm_syntax
 module List = Safe_list
-module T_intf = Target_intf.Target
+module T_intf = Rivet_target_intf.Target
 
 module Make (T : T_intf.TARGET) = struct
   (* The stages below source text are {!Pipeline_direct}'s, over this target's
@@ -59,7 +59,7 @@ module Make (T : T_intf.TARGET) = struct
 
   (* The same erasure for the target's *front-end* domain, which is a separate
      type because it may name Asm_syntax and the encoder's may not - see
-     Target_intf.Target.TARGET. *)
+     Rivet_target_intf.Target.TARGET. *)
   let parse_diagnostic e = T.parse_error_diagnostic (Err.Error.kind e)
 
   (* {1 Stage 1 - text to source AST (§4.2)} *)
@@ -230,7 +230,7 @@ module Make (T : T_intf.TARGET) = struct
      (docs/errors.md §2). The payload is untouched: a stage mark records
      that a failure crossed here, not a new failure. *)
 
-  let assemble_request (r : Target_intf.Target.request) ~unit_name ~source () =
+  let assemble_request (r : Rivet_target_intf.Target.request) ~unit_name ~source () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ r in
     let* state, ceiling = start ?features:r.features ?max_features:r.max_features () in
@@ -243,7 +243,7 @@ module Make (T : T_intf.TARGET) = struct
 
   let assemble ?entry ?features ~unit_name ~source () =
     assemble_request
-      { Target_intf.Target.default_request with entry; features }
+      { Rivet_target_intf.Target.default_request with entry; features }
       ~unit_name ~source ()
 
   (* M3's multi-module entry point. Every input is lowered independently
@@ -252,8 +252,8 @@ module Make (T : T_intf.TARGET) = struct
      circuit [lower_one]'s own three stages still use internally - and only
      the resulting module list crosses into [plan_many], the one place
      cross-input resolution (§2) actually happens. *)
-  let assemble_many_request (r : Target_intf.Target.request) (sources : (string * Span.source) list)
-      () =
+  let assemble_many_request (r : Rivet_target_intf.Target.request)
+      (sources : (string * Span.source) list) () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ r in
     let* state, ceiling = start ?features:r.features ?max_features:r.max_features () in
@@ -273,7 +273,9 @@ module Make (T : T_intf.TARGET) = struct
          ~allow_rwx:r.allow_rwx ~group_sections:r.group_sections modules)
 
   let assemble_many ?entry ?features sources () =
-    assemble_many_request { Target_intf.Target.default_request with entry; features } sources ()
+    assemble_many_request
+      { Rivet_target_intf.Target.default_request with entry; features }
+      sources ()
 
   (* {1 Dumps (docs/contracts.md §1)} *)
 
@@ -336,10 +338,11 @@ module Make (T : T_intf.TARGET) = struct
      compare it, and a copy carried alongside would be free to disagree with
      [T.fixup_kind_name]. *)
   let dump_codec () =
-    Fmt.to_to_string Codec.Shape.pp (Codec.inspect ~kind_name:T.fixup_kind_name T.codec) ^ "\n"
+    Fmt.to_to_string Rivet_codec.Shape.pp (Rivet_codec.inspect ~kind_name:T.fixup_kind_name T.codec)
+    ^ "\n"
 
   let check_codec () =
     List.map
-      (Fmt.to_to_string Codec.pp_problem)
-      (Codec.check ~equal_kind:T.equal_fixup_kind ~kind_name:T.fixup_kind_name T.codec)
+      (Fmt.to_to_string Rivet_codec.pp_problem)
+      (Rivet_codec.check ~equal_kind:T.equal_fixup_kind ~kind_name:T.fixup_kind_name T.codec)
 end

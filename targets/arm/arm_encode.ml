@@ -398,12 +398,12 @@ let default_state = { syntax = Syntax.Divided; thumb = false }
 (* No separable components: this target's whole instruction set is the always-available base, so
    there is nothing to enable or disable and every configuration is the empty one; an opcode's
    requirement is what its table entry names, which is none. *)
-let components : Target_component.t list = []
-let default_config = Target_config.default components
-let initial_state (_ : Target_config.t) = default_state
+let components : Rivet_target_features.Component.t list = []
+let default_config = Rivet_target_features.Config.default components
+let initial_state (_ : Rivet_target_features.Config.t) = default_state
 let state_config (_ : target_state) = default_config
 
-let required (i : Instruction.t) : Target_component.Req.t option =
+let required (i : Instruction.t) : Rivet_target_features.Component.Req.t option =
   Arm_ops.requirement i.Instruction.op
 
 (* {1 The modified-immediate relation (§ M1.3)}
@@ -1459,7 +1459,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
          instance of either already matches them) - given a lower priority so
          they win on decode, reproducing real objdump's own [pc, #imm]
          disassembly rather than a bare-label spelling nothing re-parses back
-         to the identical word (Codec.check's own tolerated-overlap list, the
+         to the identical word (Rivet_codec.check's own tolerated-overlap list, the
          same shape [nop]/[movw]/[movt] already appear in). *)
       C.alt ~label:"vldr-lit-d" ~priority:41
         (C.iso_fun ~name:"vldr-lit-d"
@@ -1542,13 +1542,13 @@ let triple = "arm-linux-gnueabihf"
 
 (* The A32 encoder's error domain (docs/errors.md). Below source text, so it
    names no token; the front end's operand failures are a separate domain in
-   arm.ml, for the reason {!Target_intf.Target.TARGET} gives.
+   arm.ml, for the reason {!Rivet_target_intf.Target.TARGET} gives.
 
    [`No_modified_immediate] carries the value that has no representation, which
    is the whole content of the failure: an A32 immediate is a rotation of an
    eight-bit field, so *which constant* is what a caller needs. *)
 type error_kind =
-  [ Target_error.shared
+  [ Rivet_target_error.shared
   | `Thumb_out_of_scope
   | `Expected_register_or_shifted
   | `No_modified_immediate of int64
@@ -1561,7 +1561,7 @@ type error_kind =
   | `Wrong_relocation_modifier of wrong_relocation_modifier
   | `Missing_relocation_modifier of missing_relocation_modifier
   | `Imm16_overflow of Opcode.t
-  | `Codec of Codec.error
+  | `Codec of Rivet_codec.error
   | `Decode_short
   | `Decode_no_match
   | `Branch_not_word_aligned
@@ -1583,10 +1583,10 @@ and wrong_relocation_modifier = { opcode : Opcode.t; want : string; got : string
 and missing_relocation_modifier = { opcode : Opcode.t; want : string }
 and no_modified_immediate_2op = { opcode : Opcode.t; value : int64 }
 
-type error = error_kind Target_error.t
+type error = error_kind Rivet_target_error.t
 
 let pp_error_kind ppf : error_kind -> unit = function
-  | #Target_error.shared as e -> Target_error.pp_shared ppf e
+  | #Rivet_target_error.shared as e -> Rivet_target_error.pp_shared ppf e
   | `Thumb_out_of_scope -> Fmt.string ppf "Thumb is not in M1 scope"
   | `Expected_register_or_shifted -> Fmt.string ppf "expected a register or a shifted register"
   | `No_modified_immediate v -> Fmt.pf ppf "#%Ld has no A32 modified-immediate representation" v
@@ -1603,7 +1603,7 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Missing_relocation_modifier { opcode; want } ->
       Fmt.pf ppf "%s needs a #:%s: operand" (Opcode.name opcode) want
   | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" (Opcode.name op)
-  | `Codec e -> Codec.pp_error ppf e
+  | `Codec e -> Rivet_codec.pp_error ppf e
   | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
   | `Decode_no_match -> Fmt.string ppf "no form matches this word"
   | `Branch_not_word_aligned -> Fmt.string ppf "branch target is not word-aligned"
@@ -1642,7 +1642,7 @@ let error_kind_code : error_kind -> string = function
   | `Push_needs_two_or_more_registers | `Pop_needs_two_or_more_registers
   | `Vpush_needs_contiguous_registers | `Shift_amount_out_of_range ->
       "arm.lower"
-  | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
+  | `Codec e -> Option.value (Rivet_codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
   | `Branch_not_word_aligned | `Branch_out_of_range | `Vldr_literal_backward
   | `Vldr_literal_not_word_aligned | `Vldr_literal_out_of_range ->
@@ -1651,16 +1651,16 @@ let error_kind_code : error_kind -> string = function
   | `Padding_not_word_multiple -> "arm.nop"
   | `Feature_disabled _ -> "arm.feature"
 
-let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
-let error_code e = error_kind_code (Target_error.kind e)
-let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+let pp_error ppf e = pp_error_kind ppf (Rivet_target_error.kind e)
+let error_code e = error_kind_code (Rivet_target_error.kind e)
+let error_diagnostic e = Rivet_target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
 
 (* Returns the wrapped error rather than a bare one, so every [Error (diag ...)]
    site keeps its shape: [Err.t] is a [result] whose error branch is an
    [Err.Error.t]. *)
 let diag ?pos ?origin kind =
   Err.Error.make ?pos ~pp_error
-    (Target_error.make
+    (Rivet_target_error.make
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"arm" ())
        kind)
 

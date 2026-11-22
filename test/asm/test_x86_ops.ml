@@ -240,7 +240,7 @@ let%expect_test "the encoder's views of the table" =
           if back <> Some e.op then clashes := ("shift " ^ Opcode.name e.op) :: !clashes
       | None -> ())
     Ops.all;
-  let x87_feature = (List.hd E.components).Target_component.feature in
+  let x87_feature = (List.hd E.components).Rivet_target_features.Component.feature in
   let x87 = Ops.of_feature x87_feature in
   Printf.printf "%d entries, %d opcodes; clashes [%s]; x87 %d, gated %b\n" (Array.length Ops.all)
     (Array.length Opcode.all)

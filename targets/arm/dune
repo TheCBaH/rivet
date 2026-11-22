@@ -15,7 +15,12 @@
  (public_name rivet.arm_encode)
  (modules arm_encode arm_types arm_ops)
  (modes byte native)
- (libraries rivet_foundation codec rivet_asm_core target_error target_encode)
+ (libraries
+  rivet_foundation
+  rivet_codec
+  rivet_asm_core
+  rivet_target_error
+  rivet_target_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -26,10 +31,10 @@
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  target_intf
+  rivet_target_intf
   arm_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

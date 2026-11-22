@@ -1,9 +1,12 @@
-type definition = { components : Target_component.t list; rows : Riscv_table_row.row array }
+type definition = {
+  components : Rivet_target_features.Component.t list;
+  rows : Riscv_table_row.row array;
+}
 
 module Validated = struct
   type t = {
     xlen : int;
-    components : Target_component.t list;
+    components : Rivet_target_features.Component.t list;
     rows : Riscv_table_row.row array;
     ids : Riscv_row.t array;
   }
@@ -100,7 +103,7 @@ let validated ~xlen components rows =
 
 let standard ~xlen =
   validated ~xlen
-    (List.map (Target_component.specialize ~xlen) standard_components)
+    (List.map (Rivet_target_features.Component.specialize ~xlen) standard_components)
     Riscv_table_rows.rows
 
 let overlap (a : Riscv_table_row.row) (b : Riscv_table_row.row) =
@@ -160,18 +163,20 @@ let row_problems ~handwritten ~standard_reads ~standard_rows ~vendor_features
         | None -> [])
 
 let make ~handwritten ~standard_reads ~xlen (def : definition) =
-  let vendor = List.map (Target_component.specialize ~xlen) def.components in
-  let vendor_features = List.map (fun (c : Target_component.t) -> c.feature) vendor in
+  let vendor = List.map (Rivet_target_features.Component.specialize ~xlen) def.components in
+  let vendor_features =
+    List.map (fun (c : Rivet_target_features.Component.t) -> c.feature) vendor
+  in
   let standard = (standard ~xlen).components in
   let components = standard @ vendor in
   let component_problems =
     List.concat_map
-      (fun (c : Target_component.t) ->
+      (fun (c : Rivet_target_features.Component.t) ->
         if c.default_on then
           [ Printf.sprintf "%s: a vendor component must not be on by default" c.id ]
         else [])
       vendor
-    @ Target_component.check components
+    @ Rivet_target_features.Component.check components
   in
   let rows = def.rows in
   let standard_rows =
@@ -198,7 +203,8 @@ let make ~handwritten ~standard_reads ~xlen (def : definition) =
   let unowned =
     Array.to_list rows
     |> List.filter_map (fun (r : Riscv_table_row.row) ->
-        if List.exists (fun c -> Target_component.owns_mnemonic c r.mnemonic) vendor then None
+        if List.exists (fun c -> Rivet_target_features.Component.owns_mnemonic c r.mnemonic) vendor
+        then None
         else Some (Printf.sprintf "row %s: no vendor component lists it" r.mnemonic))
   in
   match component_problems @ row_problems @ overlaps @ unowned with

@@ -1,7 +1,7 @@
 (* The linker: relaxation, fixup patching, and multi-segment binding.
    (docs/design.md §8, §9; M2.C and M2.F0.)
 
-   No target is linked. [Image] is parameterized over the fixup-kind type, so a
+   No target is linked. [Rivet_image] is parameterized over the fixup-kind type, so a
    locally declared kind exercises every path here without borrowing an
    architecture's vocabulary - and, more usefully, without an instruction
    encoder standing between the test and the thing under test. When a branch
@@ -111,14 +111,14 @@ let module_ ?(unit_name = "t") ?(target = "x86_64") ?(symbols = []) ?(commons = 
 let nop_fill ~executable:_ n = Some (String.make n '\x90')
 
 let plan ?(entry = "entry") m =
-  Image.plan_image ~evaluate ~align_fill:nop_fill
-    { Image.default_policy with entry_symbol = Some entry }
+  Rivet_image.plan_image ~evaluate ~align_fill:nop_fill
+    { Rivet_image.default_policy with entry_symbol = Some entry }
     [ m ]
 
 (* {2 Multi-module linking (M3 §4)} *)
 
 let plan_many ?entry ms =
-  Image.plan_image ~evaluate { Image.default_policy with entry_symbol = entry } ms
+  Rivet_image.plan_image ~evaluate { Rivet_image.default_policy with entry_symbol = entry } ms
 
 (* The payload only: a linker failure is wrapped now, and docs/errors.md §3
    keeps Err provenance out of anything an expect baseline compares. *)
@@ -131,7 +131,7 @@ let show_errors e =
    a section offset print identically, which is exactly the confusion these
    tests exist to catch. *)
 let bind_at l addrs =
-  match Image.bind_image l ~addresses:addrs with
+  match Rivet_image.bind_image l ~addresses:addrs with
   | Error ds ->
       show_errors ds;
       None
@@ -140,8 +140,8 @@ let bind_at l addrs =
 let hex s = Byte_cursor.to_hex s
 
 let show_text img =
-  match img.Image.segments with
-  | s :: _ -> Fmt.pr "%s@." (hex s.Image.bytes)
+  match img.Rivet_image.segments with
+  | s :: _ -> Fmt.pr "%s@." (hex s.Rivet_image.bytes)
   | [] -> Fmt.pr "(no segments)@."
 
 (* {1 Relaxation} *)
@@ -155,7 +155,8 @@ let%expect_test "a reachable branch selects the short rung" =
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l -> (
-      Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size;
+      Fmt.pr "size: %d@."
+        (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size;
       match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
   (* eb 04: two bytes, displacement 4 from the end of the branch. *)
   [%expect {|
@@ -171,12 +172,13 @@ let%expect_test "an out-of-reach branch is promoted to the near rung" =
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l -> (
-      Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size;
+      Fmt.pr "size: %d@."
+        (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size;
       match bind_at l [ (".text", 0x1000L) ] with
       | None -> ()
       | Some img -> (
-          match img.Image.segments with
-          | s :: _ -> Fmt.pr "%s@." (hex (String.sub s.Image.bytes 0 5))
+          match img.Rivet_image.segments with
+          | s :: _ -> Fmt.pr "%s@." (hex (String.sub s.Rivet_image.bytes 0 5))
           | [] -> ())));
   (* Five bytes, displacement 200. The short rung cannot hold it, so the
      fixpoint promoted once and stopped. *)
@@ -197,7 +199,7 @@ let%expect_test "the boundary between the two rungs" =
     match plan m with
     | Error ds -> show_errors ds
     | Ok l ->
-        let size = (List.hd (Image.plan_of l).Image.segments).Image.init_size in
+        let size = (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size in
         Fmt.pr "gap %3d -> %s@." n (if size = n + 2 then "rel8" else "rel32")
   in
   List.iter try_gap [ 126; 127; 128 ];
@@ -226,7 +228,8 @@ let%expect_test "an absolute target does not relax, whatever the offsets say" =
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l -> (
-      Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size;
+      Fmt.pr "size: %d@."
+        (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size;
       match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
   (* e9 fe ef ff ff: -4094, little-endian. *)
   [%expect {|
@@ -254,7 +257,9 @@ let%expect_test "a difference of two labels is absolute too" =
   in
   (match plan m with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size);
+  | Ok l ->
+      Fmt.pr "size: %d@."
+        (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size);
   [%expect {| size: 9 |}]
 
 let%expect_test "a backward branch reaches too" =
@@ -290,7 +295,7 @@ let%expect_test "one promotion forces another" =
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l ->
-      let size = (List.hd (Image.plan_of l).Image.segments).Image.init_size in
+      let size = (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size in
       (* 5 + 5 + 126 + 2: both promoted. *)
       Fmt.pr "size: %d@." size);
   [%expect {| size: 138 |}]
@@ -327,12 +332,13 @@ let%expect_test "alignment padding participates, and costs minimality" =
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l -> (
-      Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size;
+      Fmt.pr "size: %d@."
+        (List.hd (Rivet_image.plan_of l).Rivet_image.segments).Rivet_image.init_size;
       match bind_at l [ (".text", 0x1000L) ] with
       | None -> ()
       | Some img -> (
-          match img.Image.segments with
-          | s :: _ -> Fmt.pr "chose: %s@." (hex (String.sub s.Image.bytes 0 5))
+          match img.Rivet_image.segments with
+          | s :: _ -> Fmt.pr "chose: %s@." (hex (String.sub s.Rivet_image.bytes 0 5))
           | [] -> ())));
   [%expect {|
     size: 132
@@ -498,8 +504,8 @@ let%expect_test "the plan reports its outstanding fixups" =
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l ->
-      Fmt.pr "unresolved: %s@." (String.concat "," (Image.plan_of l).Image.unresolved);
-      Fmt.pr "%a@." Image.pp_plan (Image.plan_of l));
+      Fmt.pr "unresolved: %s@." (String.concat "," (Rivet_image.plan_of l).Rivet_image.unresolved);
+      Fmt.pr "%a@." Rivet_image.pp_plan (Rivet_image.plan_of l));
   [%expect
     {|
     unresolved: target
@@ -512,8 +518,8 @@ let%expect_test "the plan reports its outstanding fixups" =
 (* {1 Imports} *)
 
 let plan_externs ?(externs = []) m =
-  Image.plan_image ~evaluate
-    { Image.default_policy with entry_symbol = Some "entry"; externs }
+  Rivet_image.plan_image ~evaluate
+    { Rivet_image.default_policy with entry_symbol = Some "entry"; externs }
     [ m ]
 
 let importer () =
@@ -544,14 +550,14 @@ let%expect_test "an extern is an import the plan names and bind resolves" =
   (match plan_externs ~externs:[ "helper"; "table"; "unused" ] (importer ()) with
   | Error ds -> show_errors ds
   | Ok l -> (
-      Fmt.pr "%a@." Image.pp_plan (Image.plan_of l);
+      Fmt.pr "%a@." Rivet_image.pp_plan (Rivet_image.plan_of l);
       (match
-         Image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports:[ ("table", 1L) ]
+         Rivet_image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports:[ ("table", 1L) ]
        with
       | Error ds -> show_errors ds
       | Ok _ -> Fmt.pr "bound@.");
       match
-        Image.bind_image l
+        Rivet_image.bind_image l
           ~addresses:[ (".text", 0x40000000L) ]
           ~imports:[ ("helper", 0x40001000L); ("table", 0x20000000L); ("other", 0L) ]
       with
@@ -582,9 +588,9 @@ let%expect_test "a definition wins over an import of the same name" =
   match plan_externs ~externs:[ "helper" ] m with
   | Error ds -> show_errors ds
   | Ok l ->
-      (Fmt.pr "imports=%d@." (List.length (Image.plan_of l).Image.imports);
+      (Fmt.pr "imports=%d@." (List.length (Rivet_image.plan_of l).Rivet_image.imports);
        match
-         Image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports:[ ("helper", 0L) ]
+         Rivet_image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports:[ ("helper", 0L) ]
        with
        | Error ds -> show_errors ds
        | Ok img -> show_text img);
@@ -619,7 +625,7 @@ let%expect_test "a weak extern takes its import, else 0" =
   | Ok l ->
       List.iter
         (fun imports ->
-          match Image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports with
+          match Rivet_image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports with
           | Error ds -> show_errors ds
           | Ok img -> show_text img)
         [ []; [ ("table", 0x1234L) ] ];
@@ -653,12 +659,12 @@ let%expect_test "overlays share one run address" =
   | Ok l ->
       List.iter
         (fun overlays ->
-          match Image.bind_image l ~addresses:slot ~overlays with
+          match Rivet_image.bind_image l ~addresses:slot ~overlays with
           | Error ds -> show_errors ds
           | Ok img ->
               List.iter
-                (fun s -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
-                img.Image.segments)
+                (fun s -> Fmt.pr "%s %s@." s.Rivet_image.name (hex s.Rivet_image.bytes))
+                img.Rivet_image.segments)
         [
           [];
           [ [ ".ovl.a" ]; [ ".ovl.b" ] ];
@@ -684,7 +690,7 @@ let%expect_test "a reference into another overlay is rejected" =
   match plan (overlays ~b_calls:"a" ()) with
   | Error ds -> show_errors ds
   | Ok l ->
-      (match Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a" ]; [ ".ovl.b" ] ] with
+      (match Rivet_image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a" ]; [ ".ovl.b" ] ] with
       | Error ds -> show_errors ds
       | Ok _ -> Fmt.pr "accepted@.");
       [%expect
@@ -735,12 +741,12 @@ let%expect_test "an overlay is a set of segments" =
       match plan (m b_data) with
       | Error ds -> show_errors ds
       | Ok l -> (
-          match Image.bind_image l ~addresses ~overlays with
+          match Rivet_image.bind_image l ~addresses ~overlays with
           | Error ds -> show_errors ds
           | Ok img ->
               List.iter
-                (fun s -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
-                img.Image.segments))
+                (fun s -> Fmt.pr "%s %s@." s.Rivet_image.name (hex s.Rivet_image.bytes))
+                img.Rivet_image.segments))
     [
       ("b_data", [ [ ".ovl.a"; ".ovl.a.data" ]; [ ".ovl.b"; ".ovl.b.data" ] ]);
       ("a_data", [ [ ".ovl.a"; ".ovl.a.data" ]; [ ".ovl.b"; ".ovl.b.data" ] ]);
@@ -761,11 +767,11 @@ let%expect_test "overlays are stored apart from their shared slot" =
       List.iter
         (fun load_addresses ->
           match
-            Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a" ]; [ ".ovl.b" ] ]
+            Rivet_image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a" ]; [ ".ovl.b" ] ]
               ~load_addresses
           with
           | Error ds -> show_errors ds
-          | Ok img -> Fmt.pr "%a@." Image.pp img)
+          | Ok img -> Fmt.pr "%a@." Rivet_image.pp img)
         [
           [ (".ovl.a", 0x40010000L); (".ovl.b", 0x40010008L) ];
           [ (".ovl.a", 0x40010000L); (".ovl.b", 0x40000004L) ];
@@ -937,7 +943,10 @@ let%expect_test "an anchor may not cross sections" =
 let observed m =
   match plan m with
   | Error ds -> show_errors ds
-  | Ok l -> List.iter (fun o -> Fmt.pr "%a@." Image.pp_observation o) (Image.fixup_observations l)
+  | Ok l ->
+      List.iter
+        (fun o -> Fmt.pr "%a@." Rivet_image.pp_observation o)
+        (Rivet_image.fixup_observations l)
 
 let ref_to ?(kind = Abs32) ?(range = Lowered_ast.Bitpattern 32) e =
   Lowered_ast.Bytes
@@ -1065,7 +1074,7 @@ let%expect_test "two sections bind at their own addresses" =
   | Ok l -> (
       match bind_at l [ (".text", 0x40000000L); (".data", 0x40020000L) ] with
       | None -> ()
-      | Some img -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp img)));
+      | Some img -> Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp img)));
   [%expect
     {|
     section .text address=0x40000000 size=16 permissions=r-x
@@ -1093,7 +1102,7 @@ let%expect_test "placement preflight accumulates independent failures in order" 
   (match plan (two_sections ()) with
   | Error ds -> show_errors ds
   | Ok l -> (
-      match Image.bind_image l ~addresses:[ (".text", -1L); (".data", 2L) ] with
+      match Rivet_image.bind_image l ~addresses:[ (".text", -1L); (".data", 2L) ] with
       | Ok _ -> Fmt.pr "accepted@."
       | Error error ->
           Diag.diagnostics error
@@ -1106,7 +1115,7 @@ let%expect_test "placement preflight accumulates independent failures in order" 
 (* {1 Multi-module linking through plan_image/bind_image (M3 §4, step 4)}
 
    Everything above proved the data model in isolation; these prove the
-   wiring - [Image.plan_image] and [Image.bind_image] themselves, not
+   wiring - [Rivet_image.plan_image] and [Rivet_image.bind_image] themselves, not
    [Symtab] called directly - which is the plan's own exit criterion: two
    inputs become one resolved, fixed-address image with no object files and
    no external linker. *)
@@ -1188,7 +1197,7 @@ let%expect_test "a same-name section's flag mismatch unions rather than rejects"
   let b = module_ ~unit_name:"b" [ flagged Perms.rw "\x02" ] in
   (match plan_many [ a; b ] with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of l)));
   [%expect {| segment .flagtest size=2 zero=0 align=1 permissions=rw- |}]
 
 let%expect_test "a merge-boundary gap is filled by the caller's callback, not silently zeroed" =
@@ -1204,7 +1213,7 @@ let%expect_test "a merge-boundary gap is filled by the caller's callback, not si
       ]
   in
   let fill ~executable n = if executable then String.make n '\xaa' else String.make n '\x00' in
-  (match Image.plan_image ~evaluate ~fill Image.default_policy [ a; b ] with
+  (match Rivet_image.plan_image ~evaluate ~fill Rivet_image.default_policy [ a; b ] with
   | Error ds -> show_errors ds
   | Ok l -> ( match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
   [%expect {| 11 aa aa aa 22 |}]
@@ -1238,7 +1247,7 @@ let%expect_test "a NOBITS section reserves logical extent without writing real b
   in
   (match plan m with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of l)));
   [%expect
     {|
     segment .text size=0 zero=0 align=1 permissions=r-x
@@ -1257,18 +1266,19 @@ let%expect_test "a NOBITS label lands after its reservation, and binds without r
   (match plan m with
   | Error ds -> show_errors ds
   | Ok l -> (
-      match Image.bind_image l ~addresses:[ (".text", 0x1000L); (".bss", 0x2000L) ] with
+      match Rivet_image.bind_image l ~addresses:[ (".text", 0x1000L); (".bss", 0x2000L) ] with
       | Error ds -> show_errors ds
       | Ok img ->
           (* Standing invariant (§6): every bound segment's real bytes and
              logical extent are asked separately - a NOBITS segment's own
              bytes are always empty, whatever its zero_fill says. *)
           List.iter
-            (fun (s : Image.segment) ->
-              Fmt.pr "%s bytes=%d zero_fill=%d@." s.Image.name (String.length s.Image.bytes)
-                s.Image.zero_fill)
-            img.Image.segments;
-          Fmt.pr "%s@." (Fmt.to_to_string Image.pp img)));
+            (fun (s : Rivet_image.segment) ->
+              Fmt.pr "%s bytes=%d zero_fill=%d@." s.Rivet_image.name
+                (String.length s.Rivet_image.bytes)
+                s.Rivet_image.zero_fill)
+            img.Rivet_image.segments;
+          Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp img)));
   [%expect
     {|
     .text bytes=0 zero_fill=0
@@ -1317,7 +1327,7 @@ let%expect_test "strong beats common: a real definition discards every .comm of 
   let b = module_ ~unit_name:"b" ~commons:[ comm "x" 4 4 ] [] in
   (match plan_many [ a; b ] with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of l)));
   (* No .bss segment at all: the common declaration never allocated
      anything, because [x] already has a real definition. *)
   [%expect {|
@@ -1372,8 +1382,9 @@ let%expect_test "strong beats weak, re-verified link-wide" =
       | None -> ()
       | Some img ->
           List.iter
-            (fun (s : Image.segment) -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
-            img.Image.segments));
+            (fun (s : Rivet_image.segment) ->
+              Fmt.pr "%s %s@." s.Rivet_image.name (hex s.Rivet_image.bytes))
+            img.Rivet_image.segments));
   [%expect {|
     .text b8 00 20 00 00
     .data 90 90 90 90 |}]
@@ -1398,7 +1409,7 @@ let%expect_test
   in
   (match plan_many [ a ] with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of l)));
   (* One .bss segment, sized 8 (existing) + 4 (y) = 12 - not two. *)
   [%expect {| segment .bss size=0 zero=12 align=4 permissions=rw- |}]
 
@@ -1407,10 +1418,10 @@ let%expect_test "a common carries its alignment into the merged .bss segment and
     match plan_many [ a ] with
     | Error ds -> show_errors ds
     | Ok l -> (
-        Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l));
+        Fmt.pr "%s@." (Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of l));
         match bind_at l [ (".bss", 0x1000L) ] with
         | None -> ()
-        | Some img -> List.iter (fun (n, a) -> Fmt.pr "%s at %Lx@." n a) img.Image.exports)
+        | Some img -> List.iter (fun (n, a) -> Fmt.pr "%s at %Lx@." n a) img.Rivet_image.exports)
   in
   show (module_ ~unit_name:"a" ~symbols:[ sym "x" ~section:".bss" ] ~commons:[ comm "x" 8 8 ] []);
   show
@@ -1447,7 +1458,7 @@ let%expect_test "a .size that does not fit 64 bits is an error, not 0" =
       | Ok l -> (
           match bind_at l [ (".text", 0x1000L) ] with
           | None -> ()
-          | Some img -> Fmt.pr "%a@." Image.pp img))
+          | Some img -> Fmt.pr "%a@." Rivet_image.pp img))
     [ Bigint.of_int 4; Bigint.of_string_exn "18446744073709551616" ];
   [%expect
     {|
@@ -1463,14 +1474,16 @@ let%expect_test "an entry or export naming several non-global definitions is amb
       [ text_section [ label "f"; filler 4 ] ]
   in
   let report policy =
-    match Image.plan_image ~evaluate policy [ unit_ "a"; unit_ "b" ] with
+    match Rivet_image.plan_image ~evaluate policy [ unit_ "a"; unit_ "b" ] with
     | Error ds -> show_errors ds
     | Ok _ -> Fmt.pr "accepted@."
   in
-  report { Image.default_policy with entry_symbol = Some "f" };
-  report { Image.default_policy with exported = Some [ "f" ] };
+  report { Rivet_image.default_policy with entry_symbol = Some "f" };
+  report { Rivet_image.default_policy with exported = Some [ "f" ] };
   (match
-     Image.plan_image ~evaluate { Image.default_policy with entry_symbol = Some "f" } [ unit_ "a" ]
+     Rivet_image.plan_image ~evaluate
+       { Rivet_image.default_policy with entry_symbol = Some "f" }
+       [ unit_ "a" ]
    with
   | Error ds -> show_errors ds
   | Ok _ -> Fmt.pr "one definition: accepted@.");
@@ -1599,7 +1612,7 @@ let%expect_test "a malformed lowered module is rejected by plan_image with a dia
   List.iter
     (fun (what, m) ->
       Fmt.pr "%s:@." what;
-      match Image.plan_image ~evaluate Image.default_policy [ m ] with
+      match Rivet_image.plan_image ~evaluate Rivet_image.default_policy [ m ] with
       | Error ds -> show_errors ds
       | Ok _ -> Fmt.pr "accepted@.")
     (invalid_cases ());
@@ -1672,7 +1685,7 @@ let%expect_test "modules lowered for different targets are rejected, and an empt
   | Ok _ -> Fmt.pr "accepted@.");
   (match plan_many [ unit_ "a" "aarch64"; unit_ "b" "aarch64" ] with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "tag %s@." (Image.plan_of l).target);
+  | Ok l -> Fmt.pr "tag %s@." (Rivet_image.plan_of l).target);
   (match plan_many [ unit_ "a" "" ] with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
   [%expect
     {|
@@ -1706,13 +1719,13 @@ let%expect_test "a writable executable segment is an error unless the policy all
     }
   in
   let report policy ms =
-    match Image.plan_image ~evaluate policy ms with
+    match Rivet_image.plan_image ~evaluate policy ms with
     | Error ds -> show_errors ds
-    | Ok l -> Fmt.pr "accepted, allow_rwx=%b@." (Image.plan_of l).Image.allow_rwx
+    | Ok l -> Fmt.pr "accepted, allow_rwx=%b@." (Rivet_image.plan_of l).Rivet_image.allow_rwx
   in
-  report Image.default_policy [ module_ [ rwx ] ];
-  report { Image.default_policy with allow_rwx = true } [ module_ [ rwx ] ];
-  report Image.default_policy
+  report Rivet_image.default_policy [ module_ [ rwx ] ];
+  report { Rivet_image.default_policy with allow_rwx = true } [ module_ [ rwx ] ];
+  report Rivet_image.default_policy
     [
       module_ ~unit_name:"a" [ text_section [ label "entry"; filler 4 ] ];
       module_ ~unit_name:"b" [ rw_data ];

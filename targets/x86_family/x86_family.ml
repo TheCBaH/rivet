@@ -2,7 +2,7 @@
 
    {!X86_family_encode} is the rest of the family - the constructor modules, the
    codec, and everything that turns an instruction into bytes - and this file is
-   what {!Target.TARGET} adds on top of {!Target_encode.ENCODE}: a lexical
+   what {!Target.TARGET} adds on top of {!Rivet_target_encode.ENCODE}: a lexical
    profile, an operand parser, and a directive handler. The two are separate
    libraries so that a consumer which builds x86 instructions as values rather
    than reading them links the encoder alone, with no lexer and no Menhir table
@@ -29,7 +29,7 @@ module Make (M : MODE) = struct
 
   (* The front end's error domain (docs/errors.md). Separate from the
      encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
-     {!Target_intf.Target.TARGET} for why that split exists.
+     {!Rivet_target_intf.Target.TARGET} for why that split exists.
 
      That freedom is the point of the split, and [`Cannot_parse_operand] is what
      it buys: the slice travels whole - token kinds, spans and all - and the
@@ -54,7 +54,7 @@ module Make (M : MODE) = struct
     reason : Rivet_asm_syntax.Parse_lines.error_kind;
   }
 
-  type parse_error = parse_error_kind Target_error.t
+  type parse_error = parse_error_kind Rivet_target_error.t
 
   let pp_parse_error_kind ppf : parse_error_kind -> unit = function
     | `Unknown_register n -> Fmt.pf ppf "unknown register %%%s" n
@@ -77,15 +77,15 @@ module Make (M : MODE) = struct
     | `Malformed_memory_operand _ | `Bad_scale _ | `Unbalanced_parens | `Xmm_in_memory_operand _ ->
         "x86.operand"
 
-  let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
-  let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+  let pp_parse_error ppf e = pp_parse_error_kind ppf (Rivet_target_error.kind e)
+  let parse_error_code e = parse_error_kind_code (Rivet_target_error.kind e)
 
   let parse_error_diagnostic e =
-    Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+    Rivet_target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
 
   let parse_diag ?pos ?origin kind =
     Err.Error.make ?pos ~pp_error:pp_parse_error
-      (Target_error.make
+      (Rivet_target_error.make
          ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:M.name ())
          kind)
 
@@ -632,5 +632,5 @@ module Make (M : MODE) = struct
   let handle_directive ~name:_ ~arguments:_ _ =
     (* x86 has no target-state directive in M1: [.syntax], [.arch] and [.fpu]
        are ARM's, and the common table owns everything the x86 fixtures use. *)
-    Target_intf.Target.Unhandled
+    Rivet_target_intf.Target.Unhandled
 end

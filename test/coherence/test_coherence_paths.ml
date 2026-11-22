@@ -60,13 +60,15 @@ let image_of low =
   match P.plan low with
   | Error ds -> failwith (Rivet_foundation.Diag.render ds)
   | Ok l -> (
-      let plan = Image.plan_of l in
+      let plan = Rivet_image.plan_of l in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image l ~addresses with
+      match Rivet_image.bind_image l ~addresses with
       | Error ds -> failwith (Rivet_foundation.Diag.render ds)
-      | Ok img -> Fmt.to_to_string Image.pp img)
+      | Ok img -> Fmt.to_to_string Rivet_image.pp img)
 
 let%expect_test "text, direct normalized AST and direct lowered module give one image" =
   let parsed, state = from_text () in

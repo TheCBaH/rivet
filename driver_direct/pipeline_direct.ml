@@ -7,7 +7,7 @@ open Rivet_foundation
 open Rivet_asm_core
 module List = Safe_list
 
-module Make (T : Target_encode.ENCODE) = struct
+module Make (T : Rivet_target_encode.ENCODE) = struct
   let name = T.name
   let triple = T.triple
 
@@ -65,7 +65,7 @@ module Make (T : Target_encode.ENCODE) = struct
       e
 
   (* Where a target's failure becomes part of the pipeline's report. This is the
-     erasure boundary {!Target_encode.ENCODE} names: [Make] is generic over [T]
+     erasure boundary {!Rivet_target_encode.ENCODE} names: [Make] is generic over [T]
      and cannot hold a [T.error], so the target renders its own domain and a
      diagnostic is what crosses (docs/errors.md §2). *)
   let target_diagnostic ?within e =
@@ -80,7 +80,7 @@ module Make (T : Target_encode.ENCODE) = struct
      assembler: [T.default_state], every implemented component on. *)
 
   let components = T.components
-  let configure spec = Target_config.resolve T.components spec
+  let configure spec = Rivet_target_features.Config.resolve T.components spec
 
   let initial_state = function
     | None -> Ok T.default_state
@@ -97,8 +97,8 @@ module Make (T : Target_encode.ENCODE) = struct
     | None -> []
     | Some c ->
         List.filter
-          (fun f -> not (Target_config.enabled c f))
-          (Target_config.features (T.state_config state))
+          (fun f -> not (Rivet_target_features.Config.enabled c f))
+          (Rivet_target_features.Config.features (T.state_config state))
 
   let ceiling_of = function
     | None -> Ok None
@@ -542,13 +542,13 @@ module Make (T : Target_encode.ENCODE) = struct
       | Some e -> Some e
       | None -> ( match globals with [ g ] -> Some g | _ -> None)
     in
-    { Image.entry_symbol; externs; exported; max_size; allow_rwx; group_sections }
+    { Rivet_image.entry_symbol; externs; exported; max_size; allow_rwx; group_sections }
 
   let policy_for ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections
       (m : T.fixup_kind Lowered_ast.module_) =
     policy_for_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections [ m ]
 
-  (* The other erasure boundary: [Image] stores the fixup evaluator in a
+  (* The other erasure boundary: [Rivet_image] stores the fixup evaluator in a
      [laid_out], which the architecture-erased [DRIVER] hands around, so the
      closure cannot mention [T.error]. The target renders here, exactly as it
      does at [target_diagnostic] (docs/errors.md §2). *)
@@ -558,9 +558,9 @@ module Make (T : Target_encode.ENCODE) = struct
   (* M3 §5's merge-gap fill (docs/design.md §12): [T.merge_fill], where the
      target has one, is its OWN linker's measured fill for a gap a merge
      inserts in an EXECUTABLE output section - not necessarily [T.nop_bytes]
-     again (x86_32's ld and as disagree; see {!Target_encode.ENCODE.merge_fill}).
+     again (x86_32's ld and as disagree; see {!Rivet_target_encode.ENCODE.merge_fill}).
      [None], and every non-executable gap even where [Some], falls through to
-     [Image.plan_image]'s own zero-fill default, which is what makes this the
+     [Rivet_image.plan_image]'s own zero-fill default, which is what makes this the
      identity substitute for a single-module [plan]: no merge boundary exists
      there to fill at all. *)
   let merge_fill ~executable pad =
@@ -590,13 +590,13 @@ module Make (T : Target_encode.ENCODE) = struct
     else match T.nop_bytes ~length:n with Ok b -> Some b | Error _ -> None
 
   let plan ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections m =
-    Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
+    Rivet_image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
       (policy_for ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections m)
       [ m ]
 
   let plan_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections
       (modules : T.fixup_kind Lowered_ast.module_ list) =
-    Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
+    Rivet_image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
       (policy_for_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections modules)
       modules
 
@@ -698,15 +698,20 @@ module Make (T : Target_encode.ENCODE) = struct
        strictly; a word the configuration refuses is read under every component enabled, and each
        reading is judged against the caller's configuration. *)
     let discovery_state =
-      if inspect then T.initial_state (Target_config.all_enabled T.components) else state
+      if inspect then T.initial_state (Rivet_target_features.Config.all_enabled T.components)
+      else state
     in
     let unmet insn =
       match T.required insn with
       | None -> None
       | Some req ->
           Option.map
-            (fun u -> Fmt.str "requires feature %a, which is not enabled" Target_component.Req.pp u)
-            (Target_component.Req.unmet (Target_config.enabled (T.state_config state)) req)
+            (fun u ->
+              Fmt.str "requires feature %a, which is not enabled"
+                Rivet_target_features.Component.Req.pp u)
+            (Rivet_target_features.Component.Req.unmet
+               (Rivet_target_features.Config.enabled (T.state_config state))
+               req)
     in
     let shown insn = Fmt.to_to_string T.Instruction.pp insn in
     let readings here pos strict_error =
@@ -718,7 +723,7 @@ module Make (T : Target_encode.ENCODE) = struct
           in
           Ok (insn, form, n, unmet insn, List.map alternative others)
     in
-    let record ~at ~pos ~n ~text ~form ~refusal ~alternatives : Target_encode.disasm_record =
+    let record ~at ~pos ~n ~text ~form ~refusal ~alternatives : Rivet_target_encode.disasm_record =
       { address = at; bytes = String.sub bytes pos n; text; form; refusal; alternatives }
     in
     let rec go pos acc =
@@ -754,11 +759,11 @@ module Make (T : Target_encode.ENCODE) = struct
   let dump_disasm_diagnostic ?features ?inspect ~address bytes =
     let open Err.Syntax in
     let* records = disassemble_records ?features ?inspect ~address bytes in
-    let run (r : Target_encode.disasm_record) =
+    let run (r : Rivet_target_encode.disasm_record) =
       String.concat " "
         (List.init (String.length r.bytes) (fun i -> Printf.sprintf "%02x" (Char.code r.bytes.[i])))
     in
-    let text (r : Target_encode.disasm_record) =
+    let text (r : Rivet_target_encode.disasm_record) =
       r.text
       ^ (match r.refusal with Some m -> "  ; " ^ m | None -> "")
       ^ if r.alternatives = [] then "" else "  ; or " ^ String.concat "; or " r.alternatives
@@ -769,7 +774,7 @@ module Make (T : Target_encode.ENCODE) = struct
     Ok
       (String.concat ""
          (List.map
-            (fun ((r : Target_encode.disasm_record), run, text) ->
+            (fun ((r : Rivet_target_encode.disasm_record), run, text) ->
               Printf.sprintf "%08Lx  %-*s  %-*s  [%s]\n" r.address wr run wt text
                 (Option.value r.form ~default:"padding"))
             rows))
@@ -779,7 +784,7 @@ module Make (T : Target_encode.ENCODE) = struct
     let* records = disassemble_records ?features ~address bytes in
     Ok
       (String.concat ""
-         (List.map (fun (r : Target_encode.disasm_record) -> "\t" ^ r.text ^ "\n") records))
+         (List.map (fun (r : Rivet_target_encode.disasm_record) -> "\t" ^ r.text ^ "\n") records))
 
   (* {2 The symbol-labelled listing}
 
@@ -787,33 +792,36 @@ module Make (T : Target_encode.ENCODE) = struct
      fixup's symbol beside the instruction it patches. A numeric local label is spelled as the GNU
      export spells it. Like the diagnostic dump it is for reading, not for re-parsing. *)
 
-  let listing_records ?features ?inspect (image : Image.t) ~segment =
+  let listing_records ?features ?inspect (image : Rivet_image.t) ~segment =
     let open Err.Syntax in
-    match List.find_opt (fun (s : Image.segment) -> String.equal s.name segment) image.segments with
+    match
+      List.find_opt (fun (s : Rivet_image.segment) -> String.equal s.name segment) image.segments
+    with
     | None -> Diag.fail ~pos:__POS__ [ diag (`Unknown_segment segment) ]
     | Some s ->
         let* records = disassemble_records ?features ?inspect ~address:s.address s.bytes in
         let symbol = Rivet_asm_core.Gnu_module.symbol in
-        let rec go records (symbols : Image.symbol list) (refs : Image.reference list) acc =
+        let rec go records (symbols : Rivet_image.symbol list) (refs : Rivet_image.reference list)
+            acc =
           match records with
           | [] -> List.rev acc
-          | (r : Target_encode.disasm_record) :: rest ->
+          | (r : Rivet_target_encode.disasm_record) :: rest ->
               let stop = Int64.add r.address (Int64.of_int (String.length r.bytes)) in
               let before a = Int64.unsigned_compare a stop < 0 in
               let here, symbols =
-                List.partition (fun (y : Image.symbol) -> before y.sym_address) symbols
+                List.partition (fun (y : Rivet_image.symbol) -> before y.sym_address) symbols
               in
               let mine, refs =
-                List.partition (fun (f : Image.reference) -> before f.ref_site) refs
+                List.partition (fun (f : Rivet_image.reference) -> before f.ref_site) refs
               in
-              let line : Target_encode.listing_line =
+              let line : Rivet_target_encode.listing_line =
                 {
                   record = r;
-                  labels = List.map (fun (y : Image.symbol) -> symbol y.sym_name) here;
+                  labels = List.map (fun (y : Rivet_image.symbol) -> symbol y.sym_name) here;
                   targets =
                     List.sort_uniq compare
                       (List.map
-                         (fun (f : Image.reference) -> (symbol f.ref_symbol, f.ref_addend))
+                         (fun (f : Rivet_image.reference) -> (symbol f.ref_symbol, f.ref_addend))
                          mine);
                 }
               in
@@ -826,14 +834,14 @@ module Make (T : Target_encode.ENCODE) = struct
         in
         Ok
           (go records
-             (List.filter (fun (y : Image.symbol) -> inside y.sym_address) image.symbols)
-             (List.filter (fun (f : Image.reference) -> inside f.ref_site) image.references)
+             (List.filter (fun (y : Rivet_image.symbol) -> inside y.sym_address) image.symbols)
+             (List.filter (fun (f : Rivet_image.reference) -> inside f.ref_site) image.references)
              [])
 
   let dump_listing ?features ?inspect image ~segment =
     let open Err.Syntax in
     let* lines = listing_records ?features ?inspect image ~segment in
-    let run (r : Target_encode.disasm_record) =
+    let run (r : Rivet_target_encode.disasm_record) =
       String.concat " "
         (List.init (String.length r.bytes) (fun i -> Printf.sprintf "%02x" (Char.code r.bytes.[i])))
     in
@@ -844,17 +852,17 @@ module Make (T : Target_encode.ENCODE) = struct
     in
     let wr =
       List.fold_left
-        (fun a (l : Target_encode.listing_line) -> max a (String.length (run l.record)))
+        (fun a (l : Rivet_target_encode.listing_line) -> max a (String.length (run l.record)))
         0 lines
     in
     let wt =
       List.fold_left
-        (fun a (l : Target_encode.listing_line) -> max a (String.length l.record.text))
+        (fun a (l : Rivet_target_encode.listing_line) -> max a (String.length l.record.text))
         0 lines
     in
     let buf = Buffer.create 256 in
     List.iter
-      (fun (l : Target_encode.listing_line) ->
+      (fun (l : Rivet_target_encode.listing_line) ->
         List.iter (fun n -> Buffer.add_string buf (n ^ ":\n")) l.labels;
         let refs =
           match l.targets with
@@ -868,5 +876,5 @@ module Make (T : Target_encode.ENCODE) = struct
       lines;
     Ok (Buffer.contents buf)
 
-  let fixup_observations = Image.fixup_observations
+  let fixup_observations = Rivet_image.fixup_observations
 end

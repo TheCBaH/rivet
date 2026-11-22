@@ -20,11 +20,11 @@ let component ~id ~feature ?(requires = []) ?(conflicts = []) ?(implies = []) ?(
     handwritten @ List.filter (fun (m, _) -> not (List.mem_assoc m handwritten)) (table_forms rows)
   in
   {
-    Target_component.id;
+    Rivet_target_features.Component.id;
     feature;
     requires;
     conflicts;
-    implies = List.map (fun f -> (Target_component.Always, f)) implies @ conditional;
+    implies = List.map (fun f -> (Rivet_target_features.Component.Always, f)) implies @ conditional;
     default_on;
     xlens;
     not_applicable = None;
@@ -33,9 +33,9 @@ let component ~id ~feature ?(requires = []) ?(conflicts = []) ?(implies = []) ?(
       List.map
         (fun (mnemonic, name) ->
           {
-            Target_component.label = mnemonic;
+            Rivet_target_features.Component.label = mnemonic;
             mnemonics = [ mnemonic ];
-            sources = [ { Target_component.upstream = "riscv-opcodes"; name } ];
+            sources = [ { Rivet_target_features.Component.upstream = "riscv-opcodes"; name } ];
             legal = legal mnemonic;
           })
         forms;

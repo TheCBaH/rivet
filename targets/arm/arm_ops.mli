@@ -772,6 +772,6 @@ val rd_rm : Arm_types.Opcode.t -> (int64 * int64) option
 val v3_selector : Arm_types.V3.op -> int64 * int64 * int64 * int64
 val v3_of_selector : int64 * int64 * int64 * int64 -> Arm_encode__Arm_types.V3.op option
 val v3_name : Arm_types.V3.op -> string
-val requirement : Arm_types.Opcode.t -> Target_component.Req.t option
+val requirement : Arm_types.Opcode.t -> Rivet_target_features.Component.Req.t option
 val of_enc : Enc.t -> Arm_types.Opcode.t option
 val s_form : int -> Kind.t list -> Arm_types.Opcode.t option

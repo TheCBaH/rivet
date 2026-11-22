@@ -7,7 +7,7 @@ let a = Riscv_ext.component ~id:"riscv.a" ~feature:"a" ~summary:"atomic memory o
 let zacas =
   let legal m =
     if String.starts_with ~prefix:"amocas.b" m || String.starts_with ~prefix:"amocas.h" m then
-      Some (Target_component.Req.All [ Feature "zacas"; Feature "zabha" ])
+      Some (Rivet_target_features.Component.Req.All [ Feature "zacas"; Feature "zabha" ])
     else None
   in
   Riscv_ext.component ~id:"riscv.zacas" ~feature:"zacas" ~requires:[ "a" ] ~legal

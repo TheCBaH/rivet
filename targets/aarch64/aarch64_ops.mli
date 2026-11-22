@@ -1490,5 +1490,5 @@ val dp1_opcode : Aarch64_types.Opcode.t -> width:int -> int option
 val vbin_bits : Aarch64_types.Opcode.t -> int * int * int
 val vun_bits : Aarch64_types.Opcode.t -> int * int * int
 val vlogic_bits : Aarch64_types.Opcode.t -> int * int
-val requirement : Aarch64_types.Opcode.t -> Target_component.Req.t option
+val requirement : Aarch64_types.Opcode.t -> Rivet_target_features.Component.Req.t option
 val of_enc : Enc.t -> Aarch64_types.Opcode.t option

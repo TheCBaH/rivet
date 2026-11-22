@@ -3,7 +3,7 @@
    ({!Arm_ops}), which sits between the two. *)
 
 open Rivet_foundation
-module C = Codec
+module C = Rivet_codec
 
 (* {1 Registers}
 

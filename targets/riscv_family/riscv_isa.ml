@@ -1,5 +1,5 @@
 type isa_spec = [ `V2_2 | `V20191213 ]
-type march = { xlen : int; spec : Target_config.spec; vlen : int option }
+type march = { xlen : int; spec : Rivet_target_features.Config.spec; vlen : int option }
 
 (* The features with no ISA-string name: GNU as accepts their instructions under any -march. *)
 let unnamed = [ "system"; "s" ]
@@ -42,7 +42,7 @@ let sort_key name =
     | _ -> (4, 0, name)
 
 let zvl ~vlen config =
-  let on = Target_config.enabled config in
+  let on = Rivet_target_features.Config.enabled config in
   let implied = if on "v" then 128 else if on "zve64x" then 64 else if on "zve32x" then 32 else 0 in
   let top = max implied (Option.value vlen ~default:0) in
   let rec from n = if n > top then [] else Printf.sprintf "zvl%db" n :: from (2 * n) in
@@ -52,7 +52,7 @@ let to_string ?(isa_spec = `V20191213) ?vlen ~xlen config =
   let names =
     List.filter
       (fun f -> not (List.mem f unnamed || (isa_spec = `V2_2 && List.mem f in_base_2_2)))
-      (Target_config.features config)
+      (Rivet_target_features.Config.features config)
     @ zvl ~vlen config
   in
   let names = List.sort (fun a b -> compare (sort_key a) (sort_key b)) ("i" :: names) in
@@ -138,11 +138,12 @@ let of_march ?(isa_spec = `V20191213) march =
           in
           let words = List.filter (fun w -> zvl_length w = None) words in
           let implicit = if isa_spec = `V2_2 then in_base_2_2 else [] in
-          let enable = List.map (fun f -> Target_config.Enable f) in
+          let enable = List.map (fun f -> Rivet_target_features.Config.Enable f) in
           Ok
             {
               xlen;
               spec =
-                (Target_config.None_ :: enable unnamed) @ enable (implicit @ base @ single @ words);
+                (Rivet_target_features.Config.None_ :: enable unnamed)
+                @ enable (implicit @ base @ single @ words);
               vlen;
             })

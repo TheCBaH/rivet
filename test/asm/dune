@@ -18,11 +18,11 @@
  (modes byte native)
  (libraries
   driver
-  image
+  rivet_image
   rivet_asm_core
-  target_intf
-  target_encode
-  target_features
+  rivet_target_intf
+  rivet_target_encode
+  rivet_target_features
   riscv_family_encode
   riscv_asm
   riscv32_asm

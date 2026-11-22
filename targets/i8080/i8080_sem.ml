@@ -35,8 +35,8 @@ type regs = {
   rpc : int;
 }
 
-module Make (V : Compute.VALUE) (M : Compute.MEMORY with type value = V.t) = struct
-  module O = Compute.Ops (V)
+module Make (V : Rivet_compute.VALUE) (M : Rivet_compute.MEMORY with type value = V.t) = struct
+  module O = Rivet_compute.Ops (V)
 
   type value = V.t
 
@@ -242,8 +242,8 @@ end
 
 (* {1 The concrete model} *)
 
-module Concrete_of (V : Compute.VALUE with type t = int) = struct
-  include Make (V) (Compute.Bytes_memory)
+module Concrete_of (V : Rivet_compute.VALUE with type t = int) = struct
+  include Make (V) (Rivet_compute.Bytes_memory)
 
   let regs st =
     {
@@ -259,11 +259,11 @@ module Concrete_of (V : Compute.VALUE with type t = int) = struct
       rpc = st.pc;
     }
 
-  let create_memory () = Compute.Bytes_memory.create 0x10000
+  let create_memory () = Rivet_compute.Bytes_memory.create 0x10000
   let poke st addr s = Bytes.blit_string s 0 st.mem (addr land 0xffff) (String.length s)
 end
 
-module Model = Concrete_of (Compute.Concrete)
+module Model = Concrete_of (Rivet_compute.Concrete)
 
 (* {1 What a runner needs}
 
@@ -295,7 +295,7 @@ module type RUNNABLE = sig
   val seen : t -> Bytes.t
 end
 
-module Runnable (V : Compute.VALUE with type t = int) : RUNNABLE = struct
+module Runnable (V : Rivet_compute.VALUE with type t = int) : RUNNABLE = struct
   module C = Concrete_of (V)
 
   type t = C.t

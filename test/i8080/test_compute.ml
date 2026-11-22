@@ -3,7 +3,7 @@
 let%expect_test "Bytes_memory refuses a length that would alias or index out of range" =
   List.iter
     (fun n ->
-      match Compute.Bytes_memory.create n with
+      match Rivet_compute.Bytes_memory.create n with
       | m -> Printf.printf "%d: ok, %d bytes\n" n (Bytes.length m)
       | exception Invalid_argument msg -> Printf.printf "%d: %s\n" n msg)
     [ 0; 1; 3; 100; 256; 65536 ];
@@ -17,10 +17,12 @@ let%expect_test "Bytes_memory refuses a length that would alias or index out of 
     65536: ok, 65536 bytes |}]
 
 let%expect_test "Bytes_memory access never leaves the buffer" =
-  let m = Compute.Bytes_memory.create 16 in
-  ignore (Compute.Bytes_memory.store8 m 17 0xab);
-  Printf.printf "%02x %02x\n" (Compute.Bytes_memory.load8 m 1) (Compute.Bytes_memory.load8 m 33);
-  (match Compute.Bytes_memory.load8 (Bytes.create 0) 5 with
+  let m = Rivet_compute.Bytes_memory.create 16 in
+  ignore (Rivet_compute.Bytes_memory.store8 m 17 0xab);
+  Printf.printf "%02x %02x\n"
+    (Rivet_compute.Bytes_memory.load8 m 1)
+    (Rivet_compute.Bytes_memory.load8 m 33);
+  (match Rivet_compute.Bytes_memory.load8 (Bytes.create 0) 5 with
   | _ -> print_endline "read an empty memory"
   | exception Invalid_argument _ -> print_endline "empty memory: Invalid_argument");
   [%expect {|
@@ -29,12 +31,12 @@ let%expect_test "Bytes_memory access never leaves the buffer" =
 
 let%expect_test "Concrete.concat takes only the lo_w bits of lo" =
   Printf.printf "%x %x\n"
-    (Compute.Concrete.concat ~hi:1 ~lo:0x1ff ~lo_w:8)
-    (Compute.Concrete.concat ~hi:0 ~lo:0x1ff ~lo_w:8);
+    (Rivet_compute.Concrete.concat ~hi:1 ~lo:0x1ff ~lo_w:8)
+    (Rivet_compute.Concrete.concat ~hi:0 ~lo:0x1ff ~lo_w:8);
   [%expect {| 1ff ff |}]
 
 let%expect_test "Width bounds and masks" =
-  let module W = Compute.Width in
+  let module W = Rivet_compute.Width in
   Printf.printf "%d %d %x %Lx %Lx\n" W.max_concrete W.max_term (W.mask 30) (W.mask64 40)
     (W.mask64 64);
   List.iter

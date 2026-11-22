@@ -1,6 +1,6 @@
 (* [disassemble_records]: the records both disassembly dumps are rendered from. *)
 
-module T = Target_intf.Target
+module T = Rivet_target_intf.Target
 
 let driver target = match Driver.Registry.find target with Some d -> d | None -> failwith target
 
@@ -14,7 +14,9 @@ let render ds =
        (Rivet_foundation.Diag.diagnostics ds))
 
 let spec text =
-  match Target_config.parse_spec text with Ok s -> s | Error m -> failwith ("bad spec: " ^ m)
+  match Rivet_target_features.Config.parse_spec text with
+  | Ok s -> s
+  | Error m -> failwith ("bad spec: " ^ m)
 
 let assembled target text =
   let (module D : T.DRIVER) = driver target in
@@ -22,12 +24,14 @@ let assembled target text =
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds -> failwith (render ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
-      | Ok { Image.segments = s :: _; _ } -> s.Image.bytes
+      match Rivet_image.bind_image laid_out ~addresses with
+      | Ok { Rivet_image.segments = s :: _; _ } -> s.Rivet_image.bytes
       | Ok _ -> failwith "no segments"
       | Error ds -> failwith (render ds))
 
@@ -113,15 +117,15 @@ let bound target text =
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds -> failwith (render ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
         List.map
-          (fun (s : Image.segment_plan) ->
-            ( s.Image.seg_name,
-              if s.Image.perms.Rivet_asm_core.Perms.execute then 0x1000L else 0x2000L ))
-          plan.Image.segments
+          (fun (s : Rivet_image.segment_plan) ->
+            ( s.Rivet_image.seg_name,
+              if s.Rivet_image.perms.Rivet_asm_core.Perms.execute then 0x1000L else 0x2000L ))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Ok image -> image
       | Error ds -> failwith (render ds))
 
@@ -130,11 +134,11 @@ let listing target text =
   let image = bound target text in
   let text_segment =
     List.find
-      (fun (s : Image.segment) -> s.Image.perms.Rivet_asm_core.Perms.execute)
-      image.Image.segments
+      (fun (s : Rivet_image.segment) -> s.Rivet_image.perms.Rivet_asm_core.Perms.execute)
+      image.Rivet_image.segments
   in
   Printf.printf "%s\n" target;
-  match D.dump_listing image ~segment:text_segment.Image.name with
+  match D.dump_listing image ~segment:text_segment.Rivet_image.name with
   | Ok s -> print_string s
   | Error ds -> print_endline (render ds)
 

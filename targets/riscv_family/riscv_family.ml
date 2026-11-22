@@ -15,7 +15,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | `Unknown_option of string
     | `Invalid_arch of string ]
 
-  type parse_error = parse_error_kind Target_error.t
+  type parse_error = parse_error_kind Rivet_target_error.t
 
   let pp_parse_error_kind ppf : parse_error_kind -> unit = function
     | `Unknown_register r -> Fmt.pf ppf "unknown register %s" r
@@ -32,15 +32,15 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         name ^ ".directive"
     | _ -> name ^ ".operand"
 
-  let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
-  let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+  let pp_parse_error ppf e = pp_parse_error_kind ppf (Rivet_target_error.kind e)
+  let parse_error_code e = parse_error_kind_code (Rivet_target_error.kind e)
 
   let parse_error_diagnostic e =
-    Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+    Rivet_target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
 
   let parse_diag ?pos ?origin kind =
     Err.Error.make ?pos ~pp_error:pp_parse_error
-      (Target_error.make
+      (Rivet_target_error.make
          ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:name ())
          kind)
 
@@ -185,8 +185,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       let s = String.lowercase_ascii (String.trim raw) in
       let name = if s = "" then "" else strip_version (String.sub s 1 (String.length s - 1)) in
       match if s = "" then ' ' else s.[0] with
-      | '+' when name <> "" -> Ok (Target_config.Enable name)
-      | '-' when name <> "" -> Ok (Target_config.Disable name)
+      | '+' when name <> "" -> Ok (Rivet_target_features.Config.Enable name)
+      | '-' when name <> "" -> Ok (Rivet_target_features.Config.Disable name)
       | '=' -> Error (`Unsupported_option "arch =<ISA string>")
       | _ ->
           Error
@@ -207,8 +207,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
          gcc-compiled RISC-V file, and treating it as unknown would make it
          indistinguishable from a real misspelling). *)
       ignore arguments;
-      Target_intf.Target.Handled { state; emit = [] })
-    else if not (String.equal directive ".option") then Target_intf.Target.Unhandled
+      Rivet_target_intf.Target.Handled { state; emit = [] })
+    else if not (String.equal directive ".option") then Rivet_target_intf.Target.Unhandled
     else
       let option = String.trim (String.concat ", " arguments) in
       let arch =
@@ -217,14 +217,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Some (if items = [] then [ "" ] else items)
         | _ -> None
       in
-      let handled state = Target_intf.Target.Handled { state; emit = [] } in
+      let handled state = Rivet_target_intf.Target.Handled { state; emit = [] } in
       match (arch, option) with
       | Some items, _ -> (
-          let reject why = Target_intf.Target.Rejected (parse_diag ~pos:__POS__ why) in
+          let reject why = Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ why) in
           match parse_arch items with
           | Error why -> reject why
           | Ok spec -> (
-              match Target_config.apply components state.config spec with
+              match Rivet_target_features.Config.apply components state.config spec with
               | Ok config -> handled { state with config }
               | Error why -> reject (`Invalid_arch why)))
       | None, "push" ->
@@ -237,15 +237,16 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           match state.option_stack with
           | (pic, relax, rvc, config) :: rest ->
               handled { pic; relax; rvc; config; option_stack = rest }
-          | [] -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Option_stack_underflow))
+          | [] ->
+              Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Option_stack_underflow))
       | None, "pic" -> handled { state with pic = true }
       | None, "nopic" -> handled { state with pic = false }
       | None, "norelax" -> handled { state with relax = false }
       | None, "norvc" -> handled { state with rvc = false }
       | None, "rvc" -> handled { state with rvc = true }
       | None, "relax" ->
-          Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unsupported_option "relax"))
-      | None, o -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_option o))
+          Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unsupported_option "relax"))
+      | None, o -> Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_option o))
 end
 
 module Make (P : PROFILE) = Make_with (P) (Riscv_family_encode.Standard (P))

@@ -38,7 +38,7 @@ module Q = QCheck2
    an instruction encoder standing between the generator and the tree would make
    a failure ambiguous about which of the two is wrong. *)
 
-open Codec
+open Rivet_codec
 open Codec_corpus.Synthetic_isa
 
 let gen_reg = Q.Gen.oneof_list all_regs
@@ -77,7 +77,7 @@ let prop_decode_reencode =
      working - syntax, semantic instruction, exact form - and the counterexample
      is already frozen next door as test_codec's "two encodings, one semantic
      instruction". Preserving the *form* across a text round trip is what
-     [Codec.Relax]'s rung pin is for, and it applies to relaxation ladders
+     [Rivet_codec.Relax]'s rung pin is for, and it applies to relaxation ladders
      rather than to every [Alt].
 
      So the law is that decoding is idempotent through an encode: whatever the
@@ -258,9 +258,9 @@ let module_of s =
   }
 
 let plan_shape s =
-  Image.plan_image ~evaluate
+  Rivet_image.plan_image ~evaluate
     ~align_fill:(fun ~executable:_ n -> Some (String.make n '\x90'))
-    Image.default_policy
+    Rivet_image.default_policy
     [ module_of s ]
 
 let prop_relax_feasible =
@@ -280,7 +280,7 @@ let prop_relax_feasible =
             (fun d -> Rivet_foundation.Diagnostic.code d = "image.relax-unreachable")
             (Rivet_foundation.Diag.diagnostics ds)
       | Ok l -> (
-          match Image.bind_image l ~addresses:[ (".text", 0x400000L) ] with
+          match Rivet_image.bind_image l ~addresses:[ (".text", 0x400000L) ] with
           | Ok _ -> true
           | Error _ -> false))
 
@@ -295,9 +295,12 @@ let prop_relax_stable =
         match plan_shape s with
         | Error _ -> None
         | Ok l -> (
-            match Image.bind_image l ~addresses:[ (".text", 0x400000L) ] with
+            match Rivet_image.bind_image l ~addresses:[ (".text", 0x400000L) ] with
             | Error _ -> None
-            | Ok img -> ( match img.Image.segments with s :: _ -> Some s.Image.bytes | [] -> None))
+            | Ok img -> (
+                match img.Rivet_image.segments with
+                | s :: _ -> Some s.Rivet_image.bytes
+                | [] -> None))
       in
       bytes_of () = bytes_of ())
 

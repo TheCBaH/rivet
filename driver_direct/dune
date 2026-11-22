@@ -9,10 +9,10 @@
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
-  image
-  target_encode
-  target_features)
+  rivet_image
+  rivet_target_encode
+  rivet_target_features)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

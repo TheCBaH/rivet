@@ -22,8 +22,8 @@
   qcheck-core
   qcheck-core.runner
   driver
-  target_intf
-  image
+  rivet_target_intf
+  rivet_image
   rivet_foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

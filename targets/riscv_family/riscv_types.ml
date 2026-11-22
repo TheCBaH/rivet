@@ -8,7 +8,7 @@ open Rivet_foundation
 module type INDEX = sig
   type t = private int
 
-  include Target_encode.REGS with type t := t
+  include Rivet_target_encode.REGS with type t := t
 
   val equal : t -> t -> bool
   val pp : t Fmt.t

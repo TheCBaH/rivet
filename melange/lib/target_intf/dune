@@ -8,46 +8,45 @@
  (files ../../../lib/target_intf/*.mli))
 
 (library
- (name target_error)
- (modules target_error)
+ (name rivet_target_error)
+ (modules rivet_target_error)
  (modes byte native melange)
  (libraries rivet_foundation)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name target_features)
- (modules target_component target_config)
- (wrapped false)
+ (name rivet_target_features)
+ (modules component config)
  (modes byte native melange)
  (libraries rivet_foundation rivet_fmt)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name target_encode)
- (modules target_encode)
+ (name rivet_target_encode)
+ (modules rivet_target_encode)
  (modes byte native melange)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
-  target_error
-  target_features)
+  rivet_target_error
+  rivet_target_features)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name target_intf)
+ (name rivet_target_intf)
  (modules target)
  (modes byte native melange)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  image
-  target_encode
-  target_features)
+  rivet_image
+  rivet_target_encode
+  rivet_target_features)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

@@ -6,7 +6,7 @@
    the pipeline's own public stages: the source AST gets an implicit [.text]
    when it does not start with a section directive, and the origin is read from
    the target's [org] pseudo-instruction in the normalized module, then handed
-   to [Image.bind_image] as the section's address. *)
+   to [Rivet_image.bind_image] as the section's address. *)
 
 open Rivet_foundation
 open Rivet_asm_core
@@ -34,7 +34,8 @@ let with_text_section (m : I8080.Surface.t Rivet_asm_syntax.Source_ast.module_) 
    once; absent means 0. *)
 let origin_of (m : I8080.Instruction.t Normalized_ast.module_) =
   let fail origin =
-    Diag.fail ~pos:__POS__ [ I8080.error_diagnostic (Target_error.make ~origin `Org_misplaced) ]
+    Diag.fail ~pos:__POS__
+      [ I8080.error_diagnostic (Rivet_target_error.make ~origin `Org_misplaced) ]
   in
   let rec go seen_content found = function
     | [] -> Ok (Option.value found ~default:0)

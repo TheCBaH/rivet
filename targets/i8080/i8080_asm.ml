@@ -348,22 +348,30 @@ module Program = struct
   let synthesized = Origin.synthesized ~pass:"i8080"
 
   let fail kind =
-    Diag.fail ~pos:__POS__ [ E.error_diagnostic (Target_error.make ~origin:(synthesized ()) kind) ]
+    Diag.fail ~pos:__POS__
+      [ E.error_diagnostic (Rivet_target_error.make ~origin:(synthesized ()) kind) ]
 
   let bind ~origin laid =
     let open Err.Syntax in
-    let* img = Image.bind_image laid ~addresses:[ (".text", Int64.of_int origin) ] in
+    let* img = Rivet_image.bind_image laid ~addresses:[ (".text", Int64.of_int origin) ] in
     let symbols =
       List.sort
         (fun (n1, a1) (n2, a2) -> if a1 <> a2 then compare a1 a2 else String.compare n1 n2)
-        (List.map (fun (n, a) -> (n, Int64.to_int a)) img.Image.exports)
+        (List.map (fun (n, a) -> (n, Int64.to_int a)) img.Rivet_image.exports)
     in
-    match img.Image.segments with
+    match img.Rivet_image.segments with
     | [] -> Ok { origin; bytes = ""; symbols }
     | [ s ] ->
-        if origin + String.length s.Image.bytes + s.Image.zero_fill > address_space then
-          fail (`Address_space (String.length s.Image.bytes + s.Image.zero_fill, origin))
-        else Ok { origin; bytes = s.Image.bytes ^ String.make s.Image.zero_fill '\000'; symbols }
+        if origin + String.length s.Rivet_image.bytes + s.Rivet_image.zero_fill > address_space then
+          fail
+            (`Address_space (String.length s.Rivet_image.bytes + s.Rivet_image.zero_fill, origin))
+        else
+          Ok
+            {
+              origin;
+              bytes = s.Rivet_image.bytes ^ String.make s.Rivet_image.zero_fill '\000';
+              symbols;
+            }
     | _ -> fail `Many_sections
 
   module P = Driver_direct.Pipeline_direct.Make (E)

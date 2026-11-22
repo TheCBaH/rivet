@@ -3,7 +3,7 @@
    format they move. Zcmp and Zcmt reuse the encodings of the double-precision compressed
    load/store, so they conflict with Zcd and are off by default. *)
 
-module Req = Target_component.Req
+module Req = Rivet_target_features.Component.Req
 
 let in_c names (r : Riscv_table_row.row) = String.equal r.feature "c" && List.mem r.mnemonic names
 let double = [ "c.fld"; "c.fldsp"; "c.fsd"; "c.fsdsp" ]

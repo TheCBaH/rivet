@@ -8,30 +8,30 @@ let hex s =
 let assemble target src =
   match Driver.Registry.find target with
   | None -> failwith target
-  | Some (module D : Target_intf.Target.DRIVER) -> (
+  | Some (module D : Rivet_target_intf.Target.DRIVER) -> (
       let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:src in
       match D.assemble ~unit_name:"t" ~source () with
       | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
       | Ok laid_out -> (
-          let plan = Image.plan_of laid_out in
+          let plan = Rivet_image.plan_of laid_out in
           let addresses =
             List.mapi
-              (fun i (s : Image.segment_plan) ->
-                (s.Image.seg_name, Int64.of_int ((i + 1) * 0x1000000)))
-              plan.Image.segments
+              (fun i (s : Rivet_image.segment_plan) ->
+                (s.Rivet_image.seg_name, Int64.of_int ((i + 1) * 0x1000000)))
+              plan.Rivet_image.segments
           in
-          match Image.bind_image laid_out ~addresses with
+          match Rivet_image.bind_image laid_out ~addresses with
           | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
-          | Ok img -> Ok img.Image.segments))
+          | Ok img -> Ok img.Rivet_image.segments))
 
-let segment name segs = List.find (fun (s : Image.segment) -> s.Image.name = name) segs
+let segment name segs = List.find (fun (s : Rivet_image.segment) -> s.Rivet_image.name = name) segs
 
 let show_data src =
   List.iter
     (fun t ->
       Printf.printf "%-8s " t;
       match assemble t src with
-      | Ok segs -> print_endline (hex (segment ".data" segs).Image.bytes)
+      | Ok segs -> print_endline (hex (segment ".data" segs).Rivet_image.bytes)
       | Error m -> print_endline ("error: " ^ List.hd (String.split_on_char '\n' m)))
     targets
 
@@ -123,10 +123,10 @@ let show_segments src =
       (match assemble t src with
       | Ok segs ->
           List.iter
-            (fun (s : Image.segment) ->
-              Printf.printf " %s %s a%d %s+%d" s.Image.name
-                (Rivet_asm_core.Perms.to_string s.Image.perms)
-                s.Image.alignment (hex s.Image.bytes) s.Image.zero_fill)
+            (fun (s : Rivet_image.segment) ->
+              Printf.printf " %s %s a%d %s+%d" s.Rivet_image.name
+                (Rivet_asm_core.Perms.to_string s.Rivet_image.perms)
+                s.Rivet_image.alignment (hex s.Rivet_image.bytes) s.Rivet_image.zero_fill)
             segs
       | Error m -> print_string (" error: " ^ List.hd (String.split_on_char '\n' m)));
       print_newline ())
@@ -219,7 +219,7 @@ let%expect_test "a large alignment costs the padding, not a table of every gap" 
       match assemble t src with
       | Error m -> print_endline m
       | Ok segs ->
-          let b = (segment ".text" segs).Image.bytes in
+          let b = (segment ".text" segs).Rivet_image.bytes in
           Printf.printf "%s: %d bytes, starts %s\n" t (String.length b) (hex (String.sub b 0 8)))
     [
       ("x86_64", ".text\nnop\n.p2align 20\nret\n");
@@ -235,7 +235,7 @@ let%expect_test "a value wider than its directive is an error, not a truncation"
     (fun d ->
       Printf.printf "%-28s " d;
       match assemble "x86_64" (".data\n" ^ d ^ "\n") with
-      | Ok segs -> print_endline (hex (segment ".data" segs).Image.bytes)
+      | Ok segs -> print_endline (hex (segment ".data" segs).Rivet_image.bytes)
       | Error m -> print_endline (List.hd (String.split_on_char '\n' m)))
     [
       ".byte 0x1234";
@@ -446,7 +446,7 @@ let%expect_test "the section stack" =
 let assemble_laid target src =
   match Driver.Registry.find target with
   | None -> failwith target
-  | Some (module D : Target_intf.Target.DRIVER) -> (
+  | Some (module D : Rivet_target_intf.Target.DRIVER) -> (
       let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:src in
       match D.assemble ~unit_name:"t" ~source () with
       | Ok l -> l
@@ -456,19 +456,20 @@ let first_line m = List.hd (String.split_on_char '\n' m)
 
 let bind_show target src addresses =
   let l = assemble_laid target src in
-  match Image.bind_image l ~addresses with
+  match Rivet_image.bind_image l ~addresses with
   | Error ds ->
       Printf.printf "%s: %s\n" target (first_line (String.trim (Rivet_foundation.Diag.render ds)))
   | Ok img ->
       List.iter
-        (fun (s : Image.segment) ->
-          Printf.printf "%s: %s at %Lx: %s\n" target s.Image.name s.Image.address
-            (let h = hex s.Image.bytes in
+        (fun (s : Rivet_image.segment) ->
+          Printf.printf "%s: %s at %Lx: %s\n" target s.Rivet_image.name s.Rivet_image.address
+            (let h = hex s.Rivet_image.bytes in
              if String.length h > 40 then
-               Printf.sprintf "%s... (%d bytes)" (String.sub h 0 32) (String.length s.Image.bytes)
+               Printf.sprintf "%s... (%d bytes)" (String.sub h 0 32)
+                 (String.length s.Rivet_image.bytes)
              else h))
-        img.Image.segments;
-      List.iter (fun (n, a) -> Printf.printf "  export %s = %Lx\n" n a) img.Image.exports
+        img.Rivet_image.segments;
+      List.iter (fun (n, a) -> Printf.printf "  export %s = %Lx\n" n a) img.Rivet_image.exports
 
 let high_program = function
   | "x86_64" ->
@@ -566,7 +567,7 @@ let%expect_test ".ascii dumps as one data directive of byte values" =
 (* Expressions fold at arbitrary precision; only their resource use is bounded. *)
 let quad_value expr =
   match assemble "x86_64" (".data\n.quad " ^ expr ^ "\n") with
-  | Ok segs -> hex (segment ".data" segs).Image.bytes
+  | Ok segs -> hex (segment ".data" segs).Rivet_image.bytes
   | Error m -> "error: " ^ List.hd (String.split_on_char '\n' m)
 
 let%expect_test "intermediate values may exceed 64 bits when they fold back" =

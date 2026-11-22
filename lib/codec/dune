@@ -7,7 +7,7 @@
 ; retargetable core stops being retargetable.
 
 (library
- (name codec)
+ (name rivet_codec)
  (public_name rivet.codec)
  (modes byte native)
  (libraries rivet_foundation rivet_fmt)

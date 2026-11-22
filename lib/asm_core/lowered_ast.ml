@@ -68,7 +68,7 @@ type pairing = Unpaired | Pair_head of string | Pair_tail of pair_ref
 
 (* A fixup as the *linker* needs it: where to patch, what PC the architecture
    computes against, what values are acceptable, and the expression to evaluate.
-   It is deliberately not Codec.placement - asm_core sits below codec in the
+   It is deliberately not Rivet_codec.placement - asm_core sits below codec in the
    dependency DAG (§5.1) and must stay there - and the shapes differ anyway,
    because a codec places bits inside one instruction while a linker patches
    bytes inside a section. The target converts.
@@ -131,7 +131,7 @@ type 'k fragment =
           encoding is right by accident. *)
   | Align of { boundary : int; fill : int option; max_skip : int option; origin : Origin.t }
       (** pad to [boundary] bytes. Layout asks for the padding of the one gap length it needs
-          ([Image.plan_image]'s [align_fill]) - not a pattern to repeat, and not a table built here:
+          ([Rivet_image.plan_image]'s [align_fill]) - not a pattern to repeat, and not a table built here:
           on x86 the padding is a *single no-op instruction* chosen for the gap, GAS fills ten
           bytes with one ten-byte nop, and a table of every possible gap would cost
           [boundary^2 / 2] bytes per directive.

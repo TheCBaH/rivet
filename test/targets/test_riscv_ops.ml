@@ -68,7 +68,7 @@ module Check (E : ENC) = struct
       (fun l ->
         match lower op l 1 with
         | Error e -> (
-            match Target_error.kind (Err.Error.kind e) with
+            match Rivet_target_error.kind (Err.Error.kind e) with
             | `Rv64_only _ -> Some Ops.Rv64
             | `Rv32_only _ -> Some Ops.Rv32
             | _ -> None)
@@ -130,8 +130,8 @@ module Check (E : ENC) = struct
   let exts op =
     let name = E.Opcode.name op in
     List.filter_map
-      (fun (c : Target_component.t) ->
-        if List.mem name (Target_component.mnemonics c) then Some c.feature else None)
+      (fun (c : Rivet_target_features.Component.t) ->
+        if List.mem name (Rivet_target_features.Component.mnemonics c) then Some c.feature else None)
       E.components
 
   let here (e : Ops.entry) =

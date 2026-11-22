@@ -44,7 +44,7 @@ type outcome = { value : int64; globals : (string * string) list }
 
 type error =
   | No_entry  (** the image has no entry symbol *)
-  | Bind of string  (** [Image.bind_image] rejected the chosen addresses (rendered) *)
+  | Bind of string  (** [Rivet_image.bind_image] rejected the chosen addresses (rendered) *)
   | Missing_global of string  (** a requested global is not exported, or has no size *)
   | Os of string  (** a system call failed *)
   | Signal of int  (** isolated only: the child was killed by this signal (OCaml numbering) *)
@@ -177,14 +177,14 @@ let prot_bits (p : Perms.t) =
 
 (* Page-aligned offsets for every segment inside one reservation, the
    reservation's size, and the strictest alignment any segment asked for. *)
-let layout (plan : Image.plan) =
+let layout (plan : Rivet_image.plan) =
   let page = page_size () in
   let max_align =
-    List.fold_left (fun m (s : Image.segment_plan) -> max m s.alignment) page plan.segments
+    List.fold_left (fun m (s : Rivet_image.segment_plan) -> max m s.alignment) page plan.segments
   in
   let offsets, total =
     List.fold_left
-      (fun (acc, off) (s : Image.segment_plan) ->
+      (fun (acc, off) (s : Rivet_image.segment_plan) ->
         let off = align_up off (max page s.alignment) in
         ((s.seg_name, off) :: acc, align_up (off + s.init_size + s.zero_fill) page))
       ([], 0) plan.segments
@@ -206,7 +206,7 @@ let layout (plan : Image.plan) =
 type loaded = {
   mapping : int64;
   size : int;
-  image : Image.t;
+  image : Rivet_image.t;
   entry : int64;
   observe : event -> unit;
   active : int Atomic.t;
@@ -232,8 +232,8 @@ let with_open t f =
     ~finally:(fun () -> leave t)
     (fun () -> if Atomic.get t.closed then Error Closed else f ())
 
-let load ?(observe = fun (_ : event) -> ()) (laid : Image.laid_out) =
-  let plan = Image.plan_of laid in
+let load ?(observe = fun (_ : event) -> ()) (laid : Rivet_image.laid_out) =
+  let plan = Rivet_image.plan_of laid in
   match plan.target with
   | t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
   | _ -> (
@@ -241,7 +241,7 @@ let load ?(observe = fun (_ : event) -> ()) (laid : Image.laid_out) =
       else
         match
           List.find_opt
-            (fun (s : Image.segment_plan) ->
+            (fun (s : Rivet_image.segment_plan) ->
               Perms.writable s.perms && Perms.executable s.perms && not plan.allow_rwx)
             plan.segments
         with
@@ -264,15 +264,15 @@ let load ?(observe = fun (_ : event) -> ()) (laid : Image.laid_out) =
                   let addresses =
                     List.map (fun (n, off) -> (n, Int64.add base (Int64.of_int off))) offsets
                   in
-                  match Image.bind_image laid ~addresses with
+                  match Rivet_image.bind_image laid ~addresses with
                   | Error e -> Error (Bind (Diag.render e))
-                  | Ok (image : Image.t) -> (
+                  | Ok (image : Rivet_image.t) -> (
                       try
                         List.iter
-                          (fun (s : Image.segment) -> copy_in s.address s.bytes)
+                          (fun (s : Rivet_image.segment) -> copy_in s.address s.bytes)
                           image.segments;
                         List.iter
-                          (fun (s : Image.segment) ->
+                          (fun (s : Rivet_image.segment) ->
                             let size =
                               align_up (String.length s.bytes + s.zero_fill) (page_size ())
                             in
@@ -284,7 +284,7 @@ let load ?(observe = fun (_ : event) -> ()) (laid : Image.laid_out) =
                             end)
                           image.segments;
                         List.iter
-                          (fun (s : Image.segment) ->
+                          (fun (s : Rivet_image.segment) ->
                             let size = String.length s.bytes in
                             if Perms.executable s.perms && size > 0 then begin
                               clear_cache s.address size;
@@ -324,11 +324,11 @@ let call t ~(io : io) =
 let within_image t a sz =
   Int64.compare sz 0L >= 0
   && List.exists
-       (fun (s : Image.segment) ->
-         let len = Int64.of_int (String.length s.Image.bytes + s.Image.zero_fill) in
-         Int64.compare a s.Image.address >= 0
+       (fun (s : Rivet_image.segment) ->
+         let len = Int64.of_int (String.length s.Rivet_image.bytes + s.Rivet_image.zero_fill) in
+         Int64.compare a s.Rivet_image.address >= 0
          && Int64.compare sz len <= 0
-         && Int64.compare (Int64.sub a s.Image.address) (Int64.sub len sz) <= 0)
+         && Int64.compare (Int64.sub a s.Rivet_image.address) (Int64.sub len sz) <= 0)
        t.image.segments
 
 (* The bytes of an exported global with a known size, read from the live
@@ -352,7 +352,7 @@ let write_global t name bytes =
           else try Ok (copy_in a bytes) with Failure m -> Error (Os m))
       | _ -> Error (Missing_global name))
 
-let run_here ?observe ?(read_globals = []) (laid : Image.laid_out) ~(io : io) =
+let run_here ?observe ?(read_globals = []) (laid : Rivet_image.laid_out) ~(io : io) =
   match load ?observe laid with
   | Error e -> Error e
   | Ok t ->
@@ -436,7 +436,7 @@ let run_isolated ~timeout_s ?read_globals laid ~(io : io) =
 (* An image planned for another ISA is refused before anything is mapped or
    called: running its bytes in this process would fault at best. *)
 let run ?observe ?read_globals ?(isolate = true) ?(timeout_s = 10.0) laid ~io =
-  match (Image.plan_of laid).target with
+  match (Rivet_image.plan_of laid).target with
   | t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
   | _ ->
       if isolate then run_isolated ~timeout_s ?read_globals laid ~io

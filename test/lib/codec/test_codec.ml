@@ -3,7 +3,7 @@
    No target is linked here, which is M0's exit criterion for this package
    stated as a build fact rather than as an intention. *)
 
-open Codec
+open Rivet_codec
 open Codec_corpus.Synthetic_isa
 
 let show_bits b = Bits.to_string b
@@ -12,8 +12,9 @@ let hex b = Rivet_foundation.Byte_cursor.to_hex (Bits.to_bytes b)
 let pp_placement ppf (p : _ placement) =
   Fmt.pf ppf "  fixup %s:%s %a" p.name (fixup_name p.kind)
     Fmt.(
-      list ~sep:(any ",") (fun ppf (s : Codec.slice) ->
-          Fmt.pf ppf "%d+%d@%d" s.Codec.bit_offset s.Codec.bit_width s.Codec.value_lsb))
+      list ~sep:(any ",") (fun ppf (s : Rivet_codec.slice) ->
+          Fmt.pf ppf "%d+%d@%d" s.Rivet_codec.bit_offset s.Rivet_codec.bit_width
+            s.Rivet_codec.value_lsb))
     p.slices
 
 let pp_encoded ppf (e : _ encoded) =

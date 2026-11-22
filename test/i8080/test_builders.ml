@@ -1,6 +1,6 @@
 module E = I8080_encode
 module Ops = I8080_ops
-module S = I8080_sem.Runnable (Compute.Concrete)
+module S = I8080_sem.Runnable (Rivet_compute.Concrete)
 
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))

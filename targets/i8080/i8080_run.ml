@@ -79,4 +79,4 @@ module Make (S : I8080_sem.RUNNABLE) = struct
     }
 end
 
-include Make (I8080_sem.Runnable (Compute.Concrete))
+include Make (I8080_sem.Runnable (Rivet_compute.Concrete))

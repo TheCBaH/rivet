@@ -13,23 +13,27 @@ let render ds =
        (Rivet_foundation.Diag.diagnostics ds))
 
 let spec text =
-  match Target_config.parse_spec text with Ok s -> s | Error m -> failwith ("bad spec: " ^ m)
+  match Rivet_target_features.Config.parse_spec text with
+  | Ok s -> s
+  | Error m -> failwith ("bad spec: " ^ m)
 
 let assembled ?features target text =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   let source =
     Rivet_foundation.Span.source ~name:"<test>" ~contents:("\t.text\n\t" ^ text ^ "\n")
   in
   match D.assemble ?features:(Option.map spec features) ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> Error (render ds)
-      | Ok { Image.segments = s :: _; _ } -> Ok s.Image.bytes
+      | Ok { Rivet_image.segments = s :: _; _ } -> Ok s.Rivet_image.bytes
       | Ok _ -> Error "no segments")
 
 let word_bytes w =
@@ -43,7 +47,7 @@ let word_of_bytes b =
   !v
 
 let decoded ?features target bytes =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   match D.dump_disasm_canonical ?features:(Option.map spec features) ~address:0L bytes with
   | Ok t -> Ok (String.trim t)
   | Error ds -> Error (render ds)

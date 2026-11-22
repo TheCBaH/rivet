@@ -9,7 +9,7 @@ type case = {
   id : string;
   source : string;
   argv : string list;
-  features : Target_config.spec option;
+  features : Rivet_target_features.Config.spec option;
   bytes : string;
 }
 
@@ -86,7 +86,9 @@ let features_of argv =
       (fun a -> String.starts_with ~prefix:"-march=" a && Option.is_some (find_from a ~from:0 s))
       argv
   in
-  let spec text = match Target_config.parse_spec text with Ok s -> s | Error m -> failwith m in
+  let spec text =
+    match Rivet_target_features.Config.parse_spec text with Ok s -> s | Error m -> failwith m
+  in
   if has "zcmp" then Some (spec "-c,-zcd,+zcmp")
   else if has "zcmt" then Some (spec "-c,-zcd,+zcmt")
   else None
@@ -129,17 +131,19 @@ let print ?features ~instruction source =
       | Ok (n, _) -> Ok (Rivet_asm_core.Gnu_module.to_string gnu_syntax ~instruction n))
 
 (* The bytes of a one-section source bound at 0, as the corpus's own assembler run binds it. *)
-let assemble ?features (module D : Target_intf.Target.DRIVER) text =
+let assemble ?features (module D : Rivet_target_intf.Target.DRIVER) text =
   let source = Rivet_foundation.Span.source ~name:"gnu.s" ~contents:text in
   match D.assemble ?features ~unit_name:"gnu" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> Error (render ds)
-      | Ok { Image.segments = [ s ]; _ } -> Ok s.Image.bytes
-      | Ok { Image.segments = []; _ } -> Ok ""
+      | Ok { Rivet_image.segments = [ s ]; _ } -> Ok s.Rivet_image.bytes
+      | Ok { Rivet_image.segments = []; _ } -> Ok ""
       | Ok _ -> Error "more than one segment")

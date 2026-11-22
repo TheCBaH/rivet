@@ -17,7 +17,7 @@
  (modes byte native)
  (libraries
   rivet_foundation
-  compute
+  rivet_compute
   rivet_asm_core
   i8080
   i8080_text

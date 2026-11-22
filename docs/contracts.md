@@ -336,11 +336,11 @@ disagree about what a kind is called.
 The per-opcode tables (`Riscv_ops`, `X86_ops`, `Arm_ops`, `Aarch64_ops`) and the
 generated row tables (`Riscv_table_rows`, `X86_table_rows`) are the canonical
 description of a target's instructions. The codec is a view of them: ARM,
-AArch64 and the i8080 publish a real tree, where `Codec.check` proves
+AArch64 and the i8080 publish a real tree, where `Rivet_codec.check` proves
 reachability and overlap and `--dump-codec` lists every form; RISC-V publishes
 three `iso_fun` nodes (compressed, word, pair) over the table-driven encoder and
 decoder, and x86 publishes a tree for its hand-written forms with the generated
-rows beside it. For those two families `--dump-codec` and `Codec.check` therefore
+rows beside it. For those two families `--dump-codec` and `Rivet_codec.check` therefore
 describe only part of the instruction space.
 
 The static guarantees move to the row level where the tree does not reach them:
@@ -420,8 +420,8 @@ joined with `.`, prefixed by the target name:
 <target>.<alt-label>[.<alt-label>]…
 ```
 
-This is not a hand-maintained table. `Codec.encode` records the label of each
-`Alt` it commits to, in order, and `Codec.form_id` joins them. That construction
+This is not a hand-maintained table. `Rivet_codec.encode` records the label of each
+`Alt` it commits to, in order, and `Rivet_codec.form_id` joins them. That construction
 is the whole point: an id that is derived from the encoding cannot describe a
 decision the encoder did not make, whereas a hand-written id can and eventually
 does.
@@ -803,7 +803,7 @@ Reassembling the pieces, and applying signedness **once to the whole**, is the
 target's `Iso_fun`. Applying it per slice sign-extends a fragment of a number
 and is the bug this arrangement makes impossible to write by accident.
 
-`Codec.check` requires same-named slices to share a kind (compared by
+`Rivet_codec.check` requires same-named slices to share a kind (compared by
 `equal_fixup_kind`, never by printed name), not to overlap in value space, and
 to cover the value contiguously from bit 0.
 
@@ -897,7 +897,7 @@ diagnoses it is frozen per input path** so the two cannot drift into each other:
 | input | phase | diagnostic |
 |---|---|---|
 | text — `jmp.d16 foo` | the target's mnemonic parser, which knows the suffix set and has a source span | `x86.branch-suffix` |
-| programmatic — a direct-lowered `Symbolic { rung = Some "bogus" }` | `Codec.encode_rung`, the only layer that can see an unknown rung name | `codec.unknown-rung` |
+| programmatic — a direct-lowered `Symbolic { rung = Some "bogus" }` | `Rivet_codec.encode_rung`, the only layer that can see an unknown rung name | `codec.unknown-rung` |
 
 A declared rung that cannot take the value is `codec.rung-inapplicable`, which is
 a different mistake — about the value rather than about the description.
@@ -924,7 +924,7 @@ ladder, and never carry a preference.
 Layout erases the fixup-kind type — the evaluator is partially applied at plan
 time so `laid_out` stays unparameterized and the architecture-erased driver keeps
 its shape — so a kind-erased **observation** is retained per fixup and exposed as
-`Image.fixup_observations`. Without it the relocation gate, which enters through
+`Rivet_image.fixup_observations`. Without it the relocation gate, which enters through
 the erased boundary, could not see its own inputs.
 
 Two variants, not one record with optional fields:
@@ -1005,7 +1005,7 @@ instructions.
 
 A **component** is an implementation boundary: a group of forms one module owns.
 A **feature** is the name that gates it. Each family publishes its components
-as data (`Target_component.t`: an id, the gating feature, `requires`,
+as data (`Rivet_target_features.Component.t`: an id, the gating feature, `requires`,
 `conflicts`, conditional `implies`, whether it is `default_on`, the XLENs it
 applies to, and per form a codec label, mnemonics, upstream source mappings and
 an optional legality predicate). RISC-V publishes the standard extensions the
@@ -1018,7 +1018,7 @@ only the forms that exist, so **enabled does not mean the extension is fully
 implemented**.
 
 A form is **owned** by one component (catalogue provenance) and **legal** under
-a predicate (`Target_component.Req`: a feature, all of several, or any of
+a predicate (`Rivet_target_features.Component.Req`: a feature, all of several, or any of
 several). Ownership never gates; the predicate does. `amocas.b` is owned by
 Zacas and needs Zacas and Zabha; `andn` is owned by Zbb and needs Zbb or Zbkb.
 
@@ -1053,7 +1053,7 @@ applicable, distinct from an unknown name. Unknown names list the names the
 target knows. `none,+m` and `none,+zmmul,+m` are the same; `-zmmul` is an error
 while `m` is on; `-m,-zmmul` is fine.
 
-Names are resolved once, at the boundary (`Target_config.resolve`), into a
+Names are resolved once, at the boundary (`Rivet_target_features.Config.resolve`), into a
 plain validated set. Nothing below re-parses a name.
 
 ### 6.3 Where the configuration lives

@@ -11,8 +11,8 @@
 
    An instruction's effect is written once, against the primitives of a
    {!MACHINE}, and stored in its table entry. The value interpretation is the
-   machine's [V]: instantiated with {!Compute.Concrete} the effect runs, with
-   {!Compute.Term} it builds expressions. [run machine fields] is applied once
+   machine's [V]: instantiated with {!Rivet_compute.Concrete} the effect runs, with
+   {!Rivet_compute.Term} it builds expressions. [run machine fields] is applied once
    per opcode byte when a model is created and returns the closure executed on
    every step, so operand decoding costs nothing per instruction. *)
 
@@ -21,7 +21,7 @@ type cond = [ `Nz | `Z | `Nc | `C | `Po | `Pe | `P | `M ]
 type arith = Add | Adc | Sub | Sbb | Ana | Xra | Ora | Cmp
 
 module type MACHINE = sig
-  module V : Compute.VALUE
+  module V : Rivet_compute.VALUE
 
   type t
 
@@ -58,7 +58,7 @@ end
 (* Derived operations shared by the entries below. *)
 module Lib (M : MACHINE) = struct
   module V = M.V
-  module O = Compute.Ops (V)
+  module O = Rivet_compute.Ops (V)
 
   let c8 = V.const ~w:8
   let c16 = V.const ~w:16

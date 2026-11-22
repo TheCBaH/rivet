@@ -68,23 +68,23 @@ let () =
      the mistake (docs/errors.md §2); everywhere else the caller's phase
      names it, so those arms contribute no code of their own. *)
   List.iter
-    (fun e -> match Codec.code e with Some c -> claim "Codec" c | None -> ())
+    (fun e -> match Rivet_codec.code e with Some c -> claim "Codec" c | None -> ())
     [
-      `Unknown_rung { Codec.wanted = "r"; declared = [] };
-      `Rung_inapplicable { Codec.wanted = "r"; applicable = [] };
+      `Unknown_rung { Rivet_codec.wanted = "r"; declared = [] };
+      `Rung_inapplicable { Rivet_codec.wanted = "r"; applicable = [] };
       `No_form;
     ]
 
 (* {1 image} *)
 
 let () =
-  record "Image" Image.error_code
+  record "Image" Rivet_image.error_code
     [
       `No_modules;
       `No_section;
       `Section_kind_mismatch ".bss";
       `Invalid_module
-        { Image.unit_name = "u"; reason = Rivet_asm_core.Lowered_ast.Empty_name `Unit };
+        { Rivet_image.unit_name = "u"; reason = Rivet_asm_core.Lowered_ast.Empty_name `Unit };
       `Duplicate_unit "u";
       `Mixed_targets [ "a"; "b" ];
       `Rwx_segment ".text";
@@ -94,22 +94,29 @@ let () =
       `Export_undefined "s";
       `Entry_undefined "s";
       `Ambiguous_symbol "s";
-      `Too_large { Image.size = 2; limit = 1 };
+      `Too_large { Rivet_image.size = 2; limit = 1 };
       `Relax_ladder `Empty_ladder;
-      `Relax_unreachable { Image.widest = "w"; at = 0 };
-      `Align_fill { Image.pad = 1; boundary = 2 };
+      `Relax_unreachable { Rivet_image.widest = "w"; at = 0 };
+      `Align_fill { Rivet_image.pad = 1; boundary = 2 };
       `Nobits_content ".bss";
-      `Overflow { Image.segment = ".text"; address = 0L; size = 0 };
+      `Overflow { Rivet_image.segment = ".text"; address = 0L; size = 0 };
       `Overlap
-        { Image.a_name = ".text"; a_at = 0L; a_size = 0; b_name = ".data"; b_at = 0L; b_size = 0 };
+        {
+          Rivet_image.a_name = ".text";
+          a_at = 0L;
+          a_size = 0;
+          b_name = ".data";
+          b_at = 0L;
+          b_size = 0;
+        };
       `No_address ".text";
-      `Alignment { Image.segment = ".text"; needs = 4; address = 1L };
-      `Symbol_size { Image.symbol = "s"; reason = `Arithmetic `Division_by_zero };
+      `Alignment { Rivet_image.segment = ".text"; needs = 4; address = 1L };
+      `Symbol_size { Rivet_image.symbol = "s"; reason = `Arithmetic `Division_by_zero };
       `Symbol_size_too_wide "s";
       `Fixup_target_too_wide "f";
       `Fixup_wraps "f";
       `Fixup_out_of_range
-        { Image.fixup = "f"; value = 0L; range = Rivet_asm_core.Lowered_ast.Signed 8; at = 0 };
+        { Rivet_image.fixup = "f"; value = 0L; range = Rivet_asm_core.Lowered_ast.Signed 8; at = 0 };
     ]
 
 (* {1 targets}

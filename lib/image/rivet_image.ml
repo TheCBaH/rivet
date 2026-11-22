@@ -32,7 +32,7 @@ module List = Safe_list
 
 let ( @ ) = List.append
 
-(* Re-exported so a caller writes [Image.Symtab], matching every other public
+(* Re-exported so a caller writes [Rivet_image.Symtab], matching every other public
    name here - [symtab.ml] is a separate file only because [image.ml] is
    already long, not because it is a separate public surface. *)
 module Symtab = Symtab

@@ -21,25 +21,29 @@ let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
 
 let spec text =
-  match Target_config.parse_spec text with Ok s -> s | Error m -> failwith ("bad spec: " ^ m)
+  match Rivet_target_features.Config.parse_spec text with
+  | Ok s -> s
+  | Error m -> failwith ("bad spec: " ^ m)
 
 (* Assemble [text] under [features] and bind it at a fixed address. *)
 let assembled ?features target text =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   let features = Option.map spec features in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ?features ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> Error (render ds)
       | Ok img -> (
-          match img.Image.segments with
-          | s :: _ -> Ok (s.Image.bytes, s.Image.address)
+          match img.Rivet_image.segments with
+          | s :: _ -> Ok (s.Rivet_image.bytes, s.Rivet_image.address)
           | [] -> Error "no segments"))
 
 let outcome = function Ok (bytes, _) -> hex bytes | Error m -> "REFUSED " ^ m
@@ -55,8 +59,8 @@ let show ?features ?(prelude = "") target line =
 let%expect_test "spec parsing" =
   List.iter
     (fun text ->
-      match Target_config.parse_spec text with
-      | Ok s -> Printf.printf "%-16S -> %s\n" text (Target_config.spec_to_string s)
+      match Rivet_target_features.Config.parse_spec text with
+      | Ok s -> Printf.printf "%-16S -> %s\n" text (Rivet_target_features.Config.spec_to_string s)
       | Error m -> Printf.printf "%-16S -> error: %s\n" text m)
     [ ""; "none"; "none,+m"; "-x87"; " m , -x87 "; "+"; "-"; "a,,b" ];
   [%expect
@@ -73,13 +77,13 @@ let%expect_test "spec parsing" =
 let%expect_test "the effective configuration of each target" =
   List.iter
     (fun t ->
-      let (module D : Target_intf.Target.DRIVER) = driver t in
+      let (module D : Rivet_target_intf.Target.DRIVER) = driver t in
       List.iter
         (fun text ->
           match D.configure (spec text) with
           | Ok c ->
               Printf.printf "%-8s %-12S -> %s\n" t text
-                (String.concat "," (Target_config.features c))
+                (String.concat "," (Rivet_target_features.Config.features c))
           | Error m -> Printf.printf "%-8s %-12S -> error: %s\n" t text m)
         [ ""; "none"; "none,+m"; "-m"; "-zmmul"; "-m,-zmmul"; "-x87"; "none,+x87"; "bogus" ])
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
@@ -143,7 +147,7 @@ let%expect_test "the effective configuration of each target" =
 (* Requirements and conflicts are declared per component, so exercise the resolver on a
    synthetic set that has a conflict; the real targets declare none today. *)
 let%expect_test "requirements, conflicts and left-to-right order" =
-  let component feature requires conflicts : Target_component.t =
+  let component feature requires conflicts : Rivet_target_features.Component.t =
     {
       id = "t." ^ feature;
       feature;
@@ -162,8 +166,10 @@ let%expect_test "requirements, conflicts and left-to-right order" =
   in
   List.iter
     (fun text ->
-      match Target_config.resolve cs (spec text) with
-      | Ok c -> Printf.printf "%-22S -> %s\n" text (String.concat "," (Target_config.features c))
+      match Rivet_target_features.Config.resolve cs (spec text) with
+      | Ok c ->
+          Printf.printf "%-22S -> %s\n" text
+            (String.concat "," (Rivet_target_features.Config.features c))
       | Error m -> Printf.printf "%-22S -> error: %s\n" text m)
     [
       "none,+ext";
@@ -189,7 +195,7 @@ let%expect_test "requirements, conflicts and left-to-right order" =
 (* The compressed-extension shape: C implies Zca, Zcd when D is on and Zcf when F is on at XLEN
    32; Zcmp conflicts with Zcd. Specialised to each XLEN, as a target does. *)
 let compressed ~xlen =
-  let base feature : Target_component.t =
+  let base feature : Rivet_target_features.Component.t =
     {
       id = "t." ^ feature;
       feature;
@@ -210,7 +216,7 @@ let compressed ~xlen =
     }
   in
   List.map
-    (Target_component.specialize ~xlen)
+    (Rivet_target_features.Component.specialize ~xlen)
     [
       base "f";
       base "d";
@@ -226,12 +232,14 @@ let%expect_test "conditional implications keep explicit removals" =
     (fun xlen ->
       let cs = compressed ~xlen in
       Printf.printf "xlen %d default: %s\n" xlen
-        (String.concat "," (Target_config.features (Target_config.default cs)));
+        (String.concat ","
+           (Rivet_target_features.Config.features (Rivet_target_features.Config.default cs)));
       List.iter
         (fun text ->
-          match Target_config.resolve cs (spec text) with
+          match Rivet_target_features.Config.resolve cs (spec text) with
           | Ok c ->
-              Printf.printf "  %-22S -> %s\n" text (String.concat "," (Target_config.features c))
+              Printf.printf "  %-22S -> %s\n" text
+                (String.concat "," (Rivet_target_features.Config.features c))
           | Error m -> Printf.printf "  %-22S -> error: %s\n" text m)
         [
           "";
@@ -410,7 +418,9 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
     =
   let module E = Riscv64_encode in
   let config text =
-    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+    match Rivet_target_features.Config.resolve E.components (spec text) with
+    | Ok c -> c
+    | Error m -> failwith m
   in
   let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let surface mnemonic ops =
@@ -458,7 +468,9 @@ let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
   let module P = Driver_direct.Pipeline_direct.Make (E) in
   let open Rivet_asm_core in
   let config =
-    match Target_config.resolve E.components (spec "none") with Ok c -> c | Error m -> failwith m
+    match Rivet_target_features.Config.resolve E.components (spec "none") with
+    | Ok c -> c
+    | Error m -> failwith m
   in
   let origin = Rivet_foundation.Origin.producer ~tool:"kernel" ~item:"peak+8" () in
   let x n = E.Operand.Reg (E.Reg.x n) in
@@ -494,7 +506,9 @@ let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
 let%expect_test "x86: a lowered x87 form is refused at encoding, a base one is not" =
   let module E = X86_32_encode in
   let config text =
-    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+    match Rivet_target_features.Config.resolve E.components (spec text) with
+    | Ok c -> c
+    | Error m -> failwith m
   in
   let encode label features lowered =
     let state = E.initial_state (config features) in
@@ -525,7 +539,7 @@ let%expect_test "x86: a lowered x87 form is refused at encoding, a base one is n
 let bytes_of target text = match assembled target text with Ok (b, _) -> b | Error m -> failwith m
 
 let disasm ?features ?(inspect = false) target bytes =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   let features = Option.map spec features in
   match D.dump_disasm_diagnostic ?features ~inspect ~address:0x1000L bytes with
   | Ok text -> print_string text
@@ -597,7 +611,7 @@ let%expect_test "decode: strict refuses a binary64 word with d disabled" =
     00001008  d3 00 21 22  fmv.d f1, f2  ; requires feature d, which is not enabled    [riscv32.fmv.d] |}]
 
 let%expect_test "decode: canonical disassembly is strict and still re-assembles" =
-  let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "riscv64" in
   let code = bytes_of "riscv64" "\t.text\n\tmul x5, x6, x7\n" in
   (match D.dump_disasm_canonical ~address:0x1000L code with
   | Ok text ->
@@ -621,7 +635,7 @@ let%expect_test "decode: canonical disassembly is strict and still re-assembles"
 let%expect_test "RISC-V .option push/pop restores the configuration" =
   let module F = Riscv64 in
   let config =
-    match Target_config.resolve F.components (spec "none,+zmmul") with
+    match Rivet_target_features.Config.resolve F.components (spec "none,+zmmul") with
     | Ok c -> c
     | Error m -> failwith m
   in
@@ -629,15 +643,17 @@ let%expect_test "RISC-V .option push/pop restores the configuration" =
   let step directive state =
     let arguments = List.map String.trim (String.split_on_char ',' directive) in
     match F.handle_directive ~name:".option" ~arguments state with
-    | Target_intf.Target.Handled { state; _ } -> state
+    | Rivet_target_intf.Target.Handled { state; _ } -> state
     | _ -> failwith directive
   in
-  let show state = String.concat "," (Target_config.features (F.state_config state)) in
+  let show state =
+    String.concat "," (Rivet_target_features.Config.features (F.state_config state))
+  in
   let pushed = state |> step "push" |> step "rvc" |> step "pic" |> step "arch, +zba" in
   let after = step "pop" pushed in
   Printf.printf "before: %s\ninside: %s\nafter:  %s\nsame: %b\n" (show state) (show pushed)
     (show after)
-    (Target_config.equal (F.state_config state) (F.state_config after));
+    (Rivet_target_features.Config.equal (F.state_config state) (F.state_config after));
   [%expect {|
     before: zmmul
     inside: zba,zmmul
@@ -689,7 +705,7 @@ let%expect_test "RISC-V .option arch edits the configuration mid-assembly" =
    something past it is refused where it is applied, so a push/enable/use/pop sequence cannot
    slip a D instruction into an F-only (ILP32F) program. *)
 let%expect_test "RISC-V .option arch cannot enable past the maximum configuration" =
-  let (module D : Target_intf.Target.DRIVER) = driver "riscv32" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "riscv32" in
   let ceiling = spec "none,+m,+f" in
   let run ?features body =
     let source =
@@ -702,7 +718,7 @@ let%expect_test "RISC-V .option arch cannot enable past the maximum configuratio
     in
     let request =
       {
-        Target_intf.Target.default_request with
+        Rivet_target_intf.Target.default_request with
         features = Option.map spec features;
         max_features = Some ceiling;
       }
@@ -791,7 +807,7 @@ let%expect_test "lowering refuses an initial state past the maximum configuratio
     ceiling  accepted |}]
 
 let%expect_test "every unit of a multi-unit assembly gets the caller's configuration" =
-  let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "riscv64" in
   let unit name text = (name, Rivet_foundation.Span.source ~name ~contents:text) in
   let units =
     [
@@ -862,12 +878,13 @@ let%expect_test "the default configuration is pinned" =
      target with no components has an empty configuration. Naming a feature enabled here does
      not claim the extension is fully implemented; see each component's summary. *)
   List.iter
-    (fun (module D : Target_intf.Target.DRIVER) ->
-      match D.configure Target_config.default_spec with
+    (fun (module D : Rivet_target_intf.Target.DRIVER) ->
+      match D.configure Rivet_target_features.Config.default_spec with
       | Ok c ->
           Printf.printf "%-8s enabled=[%s] components=[%s]\n" D.name
-            (String.concat "," (Target_config.features c))
-            (String.concat "," (List.map (fun (c : Target_component.t) -> c.id) D.components))
+            (String.concat "," (Rivet_target_features.Config.features c))
+            (String.concat ","
+               (List.map (fun (c : Rivet_target_features.Component.t) -> c.id) D.components))
       | Error m -> Printf.printf "%-8s error: %s\n" D.name m)
     Driver.Registry.drivers;
   [%expect
@@ -955,7 +972,9 @@ let%expect_test "F and D: text path, both XLENs" =
 let%expect_test "F and D: lowered and decoded forms" =
   let module E = Riscv64_encode in
   let config text =
-    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+    match Rivet_target_features.Config.resolve E.components (spec text) with
+    | Ok c -> c
+    | Error m -> failwith m
   in
   let lowered =
     E.Lowered.R
@@ -1140,8 +1159,10 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
 let%expect_test "Zfh implies Zfhmin" =
   List.iter
     (fun text ->
-      match Target_config.resolve Riscv64_encode.components (spec text) with
-      | Ok c -> Printf.printf "%-18S -> %s\n" text (String.concat "," (Target_config.features c))
+      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      | Ok c ->
+          Printf.printf "%-18S -> %s\n" text
+            (String.concat "," (Rivet_target_features.Config.features c))
       | Error m -> Printf.printf "%-18S -> error: %s\n" text m)
     [ "none,+zfh"; "none,+zfh,-zfhmin"; "none,+zfhmin"; "none,+q"; "none,+zfa" ];
   [%expect
@@ -1257,8 +1278,10 @@ let%expect_test "Zbb, Zbkb, Zk: shared forms accept any providing extension" =
 let%expect_test "K groups are sums of their leaf extensions" =
   List.iter
     (fun text ->
-      match Target_config.resolve Riscv64_encode.components (spec text) with
-      | Ok c -> Printf.printf "%-14S -> %s\n" text (String.concat "," (Target_config.features c))
+      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      | Ok c ->
+          Printf.printf "%-14S -> %s\n" text
+            (String.concat "," (Rivet_target_features.Config.features c))
       | Error m -> Printf.printf "%-14S -> error: %s\n" text m)
     [ "none,+zk"; "none,+zks"; "none,+b"; "none,+zk,-zbkb"; "none,+zbc,-zbkc" ];
   [%expect
@@ -1361,8 +1384,10 @@ let%expect_test "Zicsr, system and cache-management forms are gated" =
 let%expect_test "F requires Zicsr" =
   List.iter
     (fun text ->
-      match Target_config.resolve Riscv64_encode.components (spec text) with
-      | Ok c -> Printf.printf "%-22S -> %s\n" text (String.concat "," (Target_config.features c))
+      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      | Ok c ->
+          Printf.printf "%-22S -> %s\n" text
+            (String.concat "," (Rivet_target_features.Config.features c))
       | Error m -> Printf.printf "%-22S -> error: %s\n" text m)
     [ "none,+f"; "-zicsr"; "-f,-d,-zicsr" ];
   [%expect
@@ -1428,8 +1453,10 @@ let%expect_test "V and its crypto subsets" =
 let%expect_test "vector configurations" =
   List.iter
     (fun text ->
-      match Target_config.resolve Riscv64_encode.components (spec text) with
-      | Ok c -> Printf.printf "%-22S -> %s\n" text (String.concat "," (Target_config.features c))
+      match Rivet_target_features.Config.resolve Riscv64_encode.components (spec text) with
+      | Ok c ->
+          Printf.printf "%-22S -> %s\n" text
+            (String.concat "," (Rivet_target_features.Config.features c))
       | Error m -> Printf.printf "%-22S -> error: %s\n" text m)
     [
       "none,+v";
@@ -1540,7 +1567,9 @@ let%expect_test "Zvfbfwma brings in the BF16 vector conversions" =
 let%expect_test "RISC-V: lowered forms of each shape are refused when their extension is off" =
   let module E = Riscv64_encode in
   let config text =
-    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+    match Rivet_target_features.Config.resolve E.components (spec text) with
+    | Ok c -> c
+    | Error m -> failwith m
   in
   let imm n = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int n) in
   let forms =
@@ -1670,13 +1699,13 @@ let%expect_test "the compressed groups on each XLEN" =
       in
       List.iter
         (fun text ->
-          match Target_config.resolve components (spec text) with
+          match Rivet_target_features.Config.resolve components (spec text) with
           | Ok c ->
               Printf.printf "%s %-24S -> %s\n" target text
                 (String.concat ","
                    (List.filter
                       (fun f -> String.get f 0 = 'z' && String.get f 1 = 'c')
-                      (Target_config.features c)))
+                      (Rivet_target_features.Config.features c)))
           | Error m -> Printf.printf "%s %-24S -> error: %s\n" target text m)
         [
           "";
@@ -1735,7 +1764,9 @@ let%expect_test "inspection lists every reading of a word the configuration refu
 let%expect_test "codec_in follows the configuration; the default codec leaves opt-ins out" =
   let module E = Riscv64_encode in
   let config text =
-    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+    match Rivet_target_features.Config.resolve E.components (spec text) with
+    | Ok c -> c
+    | Error m -> failwith m
   in
   let forms =
     [
@@ -1747,15 +1778,16 @@ let%expect_test "codec_in follows the configuration; the default codec leaves op
     (fun (label, codec) ->
       List.iter
         (fun value ->
-          match Codec.encode codec value with
+          match Rivet_codec.encode codec value with
           | Error _ ->
               Printf.printf "%-7s %-8s refused\n" label ((Fmt.to_to_string E.Lowered.pp) value)
           | Ok encoded -> (
               Printf.printf "%-7s %-8s %s" label
                 ((Fmt.to_to_string E.Lowered.pp) value)
-                (Codec.Bits.to_string encoded.Codec.bits);
-              match Codec.decode_bits codec encoded.bits with
-              | Some d -> Printf.printf " -> %s\n" ((Fmt.to_to_string E.Lowered.pp) d.Codec.value)
+                (Rivet_codec.Bits.to_string encoded.Rivet_codec.bits);
+              match Rivet_codec.decode_bits codec encoded.bits with
+              | Some d ->
+                  Printf.printf " -> %s\n" ((Fmt.to_to_string E.Lowered.pp) d.Rivet_codec.value)
               | None -> print_endline " -> no reading"))
         forms)
     [
@@ -1836,7 +1868,7 @@ let%expect_test "ISA strings: -march in, Tag_RISCV_arch out, against LLVM 19" =
             let components =
               if xlen = 32 then Riscv32_encode.components else Riscv64_encode.components
             in
-            match Target_config.resolve components spec with
+            match Rivet_target_features.Config.resolve components spec with
             | Error m -> "error: " ^ m
             | Ok c -> (
                 match Riscv_isa.to_string ?vlen ~xlen c with
@@ -1845,9 +1877,9 @@ let%expect_test "ISA strings: -march in, Tag_RISCV_arch out, against LLVM 19" =
                     let round =
                       match Riscv_isa.of_march s with
                       | Ok r -> (
-                          match Target_config.resolve components r.spec with
+                          match Rivet_target_features.Config.resolve components r.spec with
                           | Ok c'
-                            when Target_config.equal c c'
+                            when Rivet_target_features.Config.equal c c'
                                  && Riscv_isa.to_string ?vlen:r.vlen ~xlen c' = Ok s ->
                               ""
                           | _ -> " (no round trip)")
@@ -1905,7 +1937,7 @@ let%expect_test "ISA strings: the 2.2 edition and malformed input" =
         (match Riscv_isa.of_march ~isa_spec:`V2_2 march with
         | Error m -> "error: " ^ m
         | Ok { xlen; spec; vlen } -> (
-            match Target_config.resolve Riscv32_encode.components spec with
+            match Rivet_target_features.Config.resolve Riscv32_encode.components spec with
             | Error m -> "error: " ^ m
             | Ok c -> (
                 match Riscv_isa.to_string ~isa_spec:`V2_2 ?vlen ~xlen c with
@@ -1942,7 +1974,7 @@ let%expect_test "ISA strings: every standard feature has a version" =
   List.iter
     (fun (xlen, components) ->
       print_endline
-        (match Riscv_isa.to_string ~xlen (Target_config.all_enabled components) with
+        (match Riscv_isa.to_string ~xlen (Rivet_target_features.Config.all_enabled components) with
         | Ok _ -> Printf.sprintf "rv%d: ok" xlen
         | Error m -> m))
     [ (32, Riscv32_encode.components); (64, Riscv64_encode.components) ];

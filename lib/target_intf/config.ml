@@ -33,11 +33,9 @@ let spec_to_string spec =
   String.concat ","
     (List.map (function Enable f -> "+" ^ f | Disable f -> "-" ^ f | None_ -> "none") spec)
 
-let usable (c : Target_component.t) = Option.is_none c.not_applicable
-let all_features components = List.map (fun (c : Target_component.t) -> c.feature) components
-
-let find components f =
-  List.find_opt (fun (c : Target_component.t) -> String.equal c.feature f) components
+let usable (c : Component.t) = Option.is_none c.not_applicable
+let all_features components = List.map (fun (c : Component.t) -> c.feature) components
+let find components f = List.find_opt (fun (c : Component.t) -> String.equal c.feature f) components
 
 let known components =
   match all_features components with [] -> "(none)" | fs -> String.concat ", " fs
@@ -54,16 +52,16 @@ let rec enable_closure components set seen f =
           (fun set r -> enable_closure components set (S.add f seen) r)
           (S.add f set) c.requires
 
-let rec holds set : Target_component.cond -> bool = function
-  | Target_component.Always -> true
-  | Target_component.Has f -> S.mem f set
-  | Target_component.Xlen _ -> false
-  | Target_component.And cs -> List.for_all (holds set) cs
+let rec holds set : Component.cond -> bool = function
+  | Component.Always -> true
+  | Component.Has f -> S.mem f set
+  | Component.Xlen _ -> false
+  | Component.And cs -> List.for_all (holds set) cs
 
 (* The implications of enabled components whose condition holds, as the features they name. *)
 let implied components set =
   List.concat_map
-    (fun (c : Target_component.t) ->
+    (fun (c : Component.t) ->
       if not (S.mem c.feature set) then []
       else List.filter_map (fun (cond, f) -> if holds set cond then Some f else None) c.implies)
     components
@@ -86,7 +84,7 @@ let rec close components denied set =
 let default components =
   let seed =
     List.fold_left
-      (fun set (c : Target_component.t) ->
+      (fun set (c : Component.t) ->
         if c.default_on && usable c then enable_closure components set S.empty c.feature else set)
       S.empty components
   in
@@ -95,7 +93,7 @@ let default components =
 let all_enabled components =
   let all =
     List.fold_left
-      (fun set (c : Target_component.t) ->
+      (fun set (c : Component.t) ->
         if usable c then enable_closure components set S.empty c.feature else set)
       S.empty components
   in
@@ -104,7 +102,7 @@ let all_enabled components =
 let validate components set =
   let problems =
     List.concat_map
-      (fun (c : Target_component.t) ->
+      (fun (c : Component.t) ->
         if not (S.mem c.feature set) then []
         else
           List.filter_map
@@ -141,7 +139,7 @@ let apply components start spec =
             Error (Printf.sprintf "unknown feature %s (known: %s)" f (known components))
         | Enable f -> (
             match find components f with
-            | Some { Target_component.not_applicable = Some why; _ } ->
+            | Some { Component.not_applicable = Some why; _ } ->
                 Error (Printf.sprintf "feature %s is %s" f why)
             | _ ->
                 let enabled = enable_closure components S.empty S.empty f in

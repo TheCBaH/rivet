@@ -4,10 +4,10 @@
  (libraries
   native_exec
   driver
-  target_intf
+  rivet_target_intf
   rivet_foundation
   rivet_asm_core
-  image)
+  rivet_image)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

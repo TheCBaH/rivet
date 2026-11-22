@@ -8,8 +8,8 @@
  (libraries
   rivet_foundation
   rivet_asm_core
-  image
+  rivet_image
   driver_direct
   aarch64_encode
   fmt)
- (forbidden_libraries rivet_asm_syntax driver target_intf aarch64))
+ (forbidden_libraries rivet_asm_syntax driver rivet_target_intf aarch64))

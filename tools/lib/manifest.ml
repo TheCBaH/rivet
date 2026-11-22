@@ -264,7 +264,7 @@ let check_supported_targets raw v =
    descriptor an M4 v3 fixture pairs with an [expected-value:] record.
    [width] is validated against the wire's own legal widths
    (docs/exec-abi-v3.md); resolving [symbol] to an address happens later,
-   against a built [Image.exports], not here. *)
+   against a built [Rivet_image.exports], not here. *)
 let check_observation raw v =
   match String.split_on_char ' ' v with
   | [ symbol; width_s; sign_s ] -> (

@@ -20,32 +20,36 @@ let hex b =
 let spec features =
   Option.map
     (fun f ->
-      match Target_config.parse_spec f with Ok s -> s | Error m -> invalid_arg ("features: " ^ m))
+      match Rivet_target_features.Config.parse_spec f with
+      | Ok s -> s
+      | Error m -> invalid_arg ("features: " ^ m))
     features
 
 let assemble ?features target text =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   let source = Rivet_foundation.Span.source ~name:"<asm>" ~contents:("\t.text\n\t" ^ text ^ "\n") in
   match D.assemble ?features:(spec features) ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> Error (render ds)
-      | Ok { Image.segments = s :: _; _ } -> Ok s.Image.bytes
+      | Ok { Rivet_image.segments = s :: _; _ } -> Ok s.Rivet_image.bytes
       | Ok _ -> Error "no segments")
 
 let decode ?features target bytes =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   match D.dump_disasm_canonical ?features:(spec features) ~address:0x1000L bytes with
   | Ok t -> Ok (String.trim t)
   | Error ds -> Error (render ds)
 
 (* [E.name] is the target's driver name. *)
-module Make (E : Target_encode.ENCODE) = struct
+module Make (E : Rivet_target_encode.ENCODE) = struct
   let message e = Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))
 
   (* Every lowered form's bytes in order; a relaxable form takes its first rung. *)
@@ -54,7 +58,7 @@ module Make (E : Target_encode.ENCODE) = struct
     match spec features with
     | None -> E.default_state
     | Some s -> (
-        match Target_config.resolve E.components s with
+        match Rivet_target_features.Config.resolve E.components s with
         | Ok c -> E.initial_state c
         | Error m -> invalid_arg ("features: " ^ m))
 

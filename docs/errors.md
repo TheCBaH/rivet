@@ -78,10 +78,10 @@ pin large values alive.
 A domain is built by inclusion but is itself closed:
 
 ```ocaml
-type t = [ Target_error.t | `Unknown_register of string | ... ]
+type t = [ Rivet_target_error.t | `Unknown_register of string | ... ]
 
 let pp ppf = function
-  | #Target_error.t as e -> Target_error.pp ppf e
+  | #Rivet_target_error.t as e -> Rivet_target_error.pp ppf e
   | `Unknown_register n  -> Fmt.pf ppf "unknown register %%%s" n
   | ...
 ```
@@ -100,9 +100,9 @@ when a domain is created before its second tag.
 
 Three domains carry their own location rather than leaving it to the failure
 site, and they are the documented exception to "do not duplicate the location":
-`Lexer.error` and `Local_labels.error` keep a `span`, and `Target_error.t` keeps
+`Lexer.error` and `Local_labels.error` keep a `span`, and `Rivet_target_error.t` keeps
 an `Origin.t`. All three are *accumulated* — the site that builds the error is
-not the site that reports it. `Target_error` is the sharpest case:
+not the site that reports it. `Rivet_target_error` is the sharpest case:
 `parse_one_operand` knows the slice its operand came from, while the pipeline
 that renders the failure knows only the statement.
 
@@ -117,7 +117,7 @@ policy is to make the choice explicit, and to forbid the fourth.
 |---|---|---|
 | **Share** | The tag means the same thing in both domains *and reports under the same code*. Nothing is converted. | Row inclusion; `pp` delegates with `\| #Base.t as e -> Base.pp ppf e`. No `Err` call, no event — there is no conversion to record. |
 | **Wrap** | The source error is a *cause*, and the destination adds context the source could not know. | A named field on a destination tag: `` `Fixup of { name : string; reason : Expr.error } ``, whose `pp` renders `"fixup %s: %a"`. The destination owns the code. |
-| **Delegate the code** | The source layer is the only one that could have detected the mistake, so it is the one that can name it. | The source exports `code : t -> string option`; the wrapper uses `Option.value (Codec.code e) ~default:own_code`. `Codec` is the case: a target knows its own mnemonics and can reject a bad suffix with a source span, but a direct-lowered producer hands the codec a rung name out of nowhere and nothing above has the ladder to check it against. |
+| **Delegate the code** | The source layer is the only one that could have detected the mistake, so it is the one that can name it. | The source exports `code : t -> string option`; the wrapper uses `Option.value (Rivet_codec.code e) ~default:own_code`. `Rivet_codec` is the case: a target knows its own mnemonics and can reject a bad suffix with a source span, but a direct-lowered producer hands the codec a rung name out of nowhere and nothing above has the ladder to check it against. |
 | **Flatten to a string** | Never. | — |
 
 And the rules that go with them:
@@ -241,7 +241,7 @@ together, which is why neither is in the tree.
 ### Erasure boundaries
 
 Two places cannot carry a target's error type, and both are named rather than
-implicit. `Image` stores a target-supplied fixup evaluator inside a `laid_out`,
+implicit. `Rivet_image` stores a target-supplied fixup evaluator inside a `laid_out`,
 and `Target.DRIVER` erases the architecture entirely — so at
 `ENCODE.error_diagnostic` a target renders its own domain and a `Diagnostic.t`
 is what crosses. Below those calls the payload survives intact; the erasure is

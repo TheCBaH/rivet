@@ -273,7 +273,7 @@ let pp_error ppf : error -> unit = function
 
 (* The delegation of docs/errors.md §2: [Some] only where this layer is the
    only one that could have seen the mistake, so a caller writes
-   [Option.value (Codec.code e) ~default:own_code] and the reserved code cannot
+   [Option.value (Rivet_codec.code e) ~default:own_code] and the reserved code cannot
    drift from the case that earns it. *)
 let code : error -> string option = function
   | `Unknown_rung _ -> Some "codec.unknown-rung"

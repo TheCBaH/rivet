@@ -5,7 +5,7 @@
    they share are legal under either leaf. Zvkn and Zvks and their sums are implication-only
    groups, off by default. *)
 
-module Req = Target_component.Req
+module Req = Rivet_target_features.Component.Req
 
 let zvkb_forms =
   [

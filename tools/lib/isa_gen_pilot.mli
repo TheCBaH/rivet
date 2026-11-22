@@ -6,7 +6,7 @@
     stating, per family, how the implementation side is enumerated, since
     the enumeration method is part of what gets reviewed. This rules out a
     single authority across
-    both architectures: x86's composite [Codec.choice] is close to one
+    both architectures: x86's composite [Rivet_codec.choice] is close to one
     alternative per form, so [--dump-codec] approximates a form registry
     there, while RISC-V's codec is two generic wrapper alternatives
     ([word]/[pair]) around explicit encoder functions and cannot be read
@@ -18,7 +18,7 @@ type enumeration_method =
       (** x86: reproducible with [dune exec tool/asm.exe -- --target <t>
           --dump-codec <any-file>] (roughly one labelled
           alternative per form). [alternative_label] is the label
-          [Codec.inspect] prints for the chosen alternative;
+          [Rivet_codec.inspect] prints for the chosen alternative;
           [evidence] is the exact matched dump line or opcode-table entry
           from [x86_family_encode.ml] that selects it within that
           alternative (e.g. an ALU op's ModR/M-reg extension or

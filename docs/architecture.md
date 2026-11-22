@@ -14,7 +14,7 @@ Every library has a public name `rivet.<library>` in the `rivet` package, apart 
 | `lib/foundation` | `foundation` | Bigint, bit vectors, diagnostics, `Safe_list`; no other dependency |
 | `lib/asm_core` | `asm_core` | Source and normalized ASTs, `Expr`, `Lowered_ast`, directives, the common grammar |
 | `lib/asm_syntax` | `asm_syntax` | Lexer and lexical profiles |
-| `lib/codec` | `codec` | The typed bidirectional codec tree, `Codec.check`, `Codec.inspect` |
+| `lib/codec` | `codec` | The typed bidirectional codec tree, `Rivet_codec.check`, `Rivet_codec.inspect` |
 | `lib/target_intf` | `target_intf`, `target_encode`, `target_error`, `target_features` | The interfaces a target implements (below) and feature configuration |
 | `lib/image` | `image` | Symbol resolution, layout, relaxation, fixups, address binding |
 | `lib/compute` | `compute` | Symbolic and concrete evaluation of machine semantics (not part of assembling) |

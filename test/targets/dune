@@ -19,10 +19,10 @@
   driver
   driver_direct
   text_pipeline
-  image
+  rivet_image
   rivet_asm_core
-  target_intf
-  codec
+  rivet_target_intf
+  rivet_codec
   rivet_foundation
   arm
   aarch64
@@ -36,7 +36,7 @@
   x86_32_encode
   x86_64_encode
   x86_family_encode
-  target_features
+  rivet_target_features
   rivet_fmt)
  (inline_tests
   (deps ../../fixtures/isa-difficult/cases.jsonl))

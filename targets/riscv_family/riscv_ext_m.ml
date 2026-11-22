@@ -36,7 +36,7 @@ let find op = List.find_opt (fun f -> f.op = op) forms
 
 let component ~id ~feature ~requires ~summary =
   {
-    Target_component.id;
+    Rivet_target_features.Component.id;
     feature;
     requires;
     conflicts = [];
@@ -52,7 +52,7 @@ let component ~id ~feature ~requires ~summary =
           else
             Some
               {
-                Target_component.label = f.mnemonic;
+                Rivet_target_features.Component.label = f.mnemonic;
                 mnemonics = [ f.mnemonic ];
                 sources = [ { upstream = "riscv-opcodes"; name = f.source } ];
                 legal = None;

@@ -359,7 +359,7 @@ module Program : sig
 
   val symbol : image -> string -> int option
 
-  val bind : origin:int -> Image.laid_out -> image Rivet_foundation.Diag.t
+  val bind : origin:int -> Rivet_image.laid_out -> image Rivet_foundation.Diag.t
   (** The last step of {!assemble}, for a caller that planned its own module: one segment bound at
       [origin], with its exported symbols. *)
 end

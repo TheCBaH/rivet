@@ -458,14 +458,18 @@ module Make (C : CORPUS) = struct
           (Rivet_foundation.Diagnostic.message d)
           (if rest = [] then "" else Printf.sprintf " (+%d more)" (List.length rest))
 
-  type built = { laid_out : Image.laid_out; bound : Image.t; addresses : (string * int64) list }
+  type built = {
+    laid_out : Rivet_image.laid_out;
+    bound : Rivet_image.t;
+    addresses : (string * int64) list;
+  }
 
   (* One unit reads exactly like every M1/M2 case always has: [D.assemble] with
    the frozen entry name doubling as its unit name. More than one goes through
    M3's [D.assemble_many] instead, each unit named after its own stem - the
    same name its own oracle evidence is filed under. *)
   let build case target =
-    let (module D : Target_intf.Target.DRIVER) = target_of_name target in
+    let (module D : Rivet_target_intf.Target.DRIVER) = target_of_name target in
     let units = unit_paths case target in
     let sourced =
       List.map
@@ -485,7 +489,7 @@ module Make (C : CORPUS) = struct
             (fun (ls : linked_section) -> (ls.ls_name, ls.ls_addr))
             (linked_sections case target)
         in
-        match Image.bind_image laid_out ~addresses with
+        match Rivet_image.bind_image laid_out ~addresses with
         | Error ds -> Error ("BIND " ^ brief ds)
         | Ok bound -> Ok { laid_out; bound; addresses })
 
@@ -498,7 +502,7 @@ module Make (C : CORPUS) = struct
    unit's contribution was placed at within the merged section is not a
    guess: it is this assembler's own layout decision, already merge-padding-
    aware (image.ml's per-contribution [bases], §3/§5), recorded per label as
-   [Image.Symtab.definition.d_offset] - the same number GNU's own linker
+   [Rivet_image.Symtab.definition.d_offset] - the same number GNU's own linker
    used to place the identical bytes there, which [check_bytes] already
    establishes byte-for-byte. A unit's base is the lowest [d_offset] among
    its own definitions in that section: the compiler always opens a unit's
@@ -507,11 +511,13 @@ module Make (C : CORPUS) = struct
    [Value] 0. *)
   let unit_base_offset (b : built) ~section ~unit =
     List.filter_map
-      (fun (d : Image.Symtab.definition) ->
-        if String.equal d.Image.Symtab.d_section section && String.equal d.Image.Symtab.d_unit unit
-        then Some d.Image.Symtab.d_offset
+      (fun (d : Rivet_image.Symtab.definition) ->
+        if
+          String.equal d.Rivet_image.Symtab.d_section section
+          && String.equal d.Rivet_image.Symtab.d_unit unit
+        then Some d.Rivet_image.Symtab.d_offset
         else None)
-      (Image.definitions b.laid_out)
+      (Rivet_image.definitions b.laid_out)
     |> function
     | [] -> None
     | o :: os -> Some (List.fold_left min o os)
@@ -563,10 +569,12 @@ module Make (C : CORPUS) = struct
         |> List.sort (fun (a, _) (c, _) -> compare a c)
 
   let find_segment b name =
-    List.find_opt (fun (s : Image.segment) -> String.equal s.Image.name name) b.Image.segments
+    List.find_opt
+      (fun (s : Rivet_image.segment) -> String.equal s.Rivet_image.name name)
+      b.Rivet_image.segments
 
   let segment_bytes b name =
-    Option.map (fun (s : Image.segment) -> s.Image.bytes) (find_segment b name)
+    Option.map (fun (s : Rivet_image.segment) -> s.Rivet_image.bytes) (find_segment b name)
 
   (* {1 Bytes, per section, after the controlled link} *)
 
@@ -580,14 +588,15 @@ module Make (C : CORPUS) = struct
   let check_nobits sec b (ls : linked_section) =
     match find_segment b sec with
     | None -> Printf.sprintf "%s MISSING from our image" sec
-    | Some (s : Image.segment) ->
-        let extent = Int64.of_int (String.length s.Image.bytes + s.Image.zero_fill) in
-        if String.length s.Image.bytes = 0 && Int64.equal extent ls.ls_size then
+    | Some (s : Rivet_image.segment) ->
+        let extent = Int64.of_int (String.length s.Rivet_image.bytes + s.Rivet_image.zero_fill) in
+        if String.length s.Rivet_image.bytes = 0 && Int64.equal extent ls.ls_size then
           Printf.sprintf "%s %Ld bytes (nobits)" sec ls.ls_size
         else
           Printf.sprintf
             "%s NOBITS DIFFERS\n    ours:   %d init + %d zero_fill\n    oracle: %Ld bytes" sec
-            (String.length s.Image.bytes) s.Image.zero_fill ls.ls_size
+            (String.length s.Rivet_image.bytes)
+            s.Rivet_image.zero_fill ls.ls_size
 
   let check_bytes case target =
     match build case target with
@@ -682,7 +691,7 @@ module Make (C : CORPUS) = struct
   let is_multi_source case target = List.length (unit_paths case target) > 1
 
   let check_disasm case target =
-    let (module D : Target_intf.Target.DRIVER) = target_of_name target in
+    let (module D : Rivet_target_intf.Target.DRIVER) = target_of_name target in
     match build case target with
     | Error _ -> Printf.printf "%-12s %-8s (does not assemble)\n" case target
     | Ok b -> (
@@ -782,7 +791,7 @@ module Make (C : CORPUS) = struct
         "%-12s %-8s (multi-source: round-trip comparison not yet implemented per unit)\n" case
         target
     else
-      let (module D : Target_intf.Target.DRIVER) = target_of_name target in
+      let (module D : Rivet_target_intf.Target.DRIVER) = target_of_name target in
       match build case target with
       | Error _ -> Printf.printf "%-12s %-8s (does not assemble)\n" case target
       | Ok b -> (
@@ -799,7 +808,7 @@ module Make (C : CORPUS) = struct
               match D.assemble ~unit_name:"round" ~source () with
               | Error ds -> Printf.printf "%-12s %-8s REASSEMBLE %s\n" case target (brief ds)
               | Ok l -> (
-                  match Image.bind_image l ~addresses:[ (".text", address) ] with
+                  match Rivet_image.bind_image l ~addresses:[ (".text", address) ] with
                   | Error ds -> Printf.printf "%-12s %-8s REBIND %s\n" case target (brief ds)
                   | Ok img ->
                       let again = Option.value ~default:"" (segment_bytes img ".text") in
@@ -884,8 +893,9 @@ module Make (C : CORPUS) = struct
    [o_place] is the *realized* instruction length past the fragment, so a
    REX-prefixed RIP-relative load and a plain one produce different addends from
    the same expression. *)
-  let elf_addend ~pcrel ~(site : Image.site) ~addend =
-    if pcrel then Int64.add addend (Int64.of_int (site.Image.o_offset - site.Image.o_place))
+  let elf_addend ~pcrel ~(site : Rivet_image.site) ~addend =
+    if pcrel then
+      Int64.add addend (Int64.of_int (site.Rivet_image.o_offset - site.Rivet_image.o_place))
     else addend
 
   let is_pcrel kind_name =
@@ -955,14 +965,14 @@ module Make (C : CORPUS) = struct
          claim about a place in the image rather than a number. Every column O1
          indexes on is on the line, so changing any of them independently changes
          the transcript. *)
-        let site_line (site : Image.site) (r : Image.symbolic_ref) cls =
+        let site_line (site : Rivet_image.site) (r : Rivet_image.symbolic_ref) cls =
           sites :=
-            Printf.sprintf "  %s+0x%-4x %-16s %-6s %-6s %-9s %s" site.Image.o_section
-              site.Image.o_offset site.Image.o_kind_name
-              (Rivet_asm_core.Lowered_ast.fixup_role_name site.Image.o_role)
-              (match r.Image.binding with `Local -> "local" | `Global -> "global")
-              (if not r.Image.defined then "undefined"
-               else if r.Image.same_section then "same-sec"
+            Printf.sprintf "  %s+0x%-4x %-16s %-6s %-6s %-9s %s" site.Rivet_image.o_section
+              site.Rivet_image.o_offset site.Rivet_image.o_kind_name
+              (Rivet_asm_core.Lowered_ast.fixup_role_name site.Rivet_image.o_role)
+              (match r.Rivet_image.binding with `Local -> "local" | `Global -> "global")
+              (if not r.Rivet_image.defined then "undefined"
+               else if r.Rivet_image.same_section then "same-sec"
                else "other-sec")
               cls
             :: !sites
@@ -970,17 +980,19 @@ module Make (C : CORPUS) = struct
         List.iter
           (fun o ->
             match o with
-            | Image.Non_normalizable n ->
+            | Rivet_image.Non_normalizable n ->
                 (* No single symbol, so no record to compare against; O2's
                  post-link byte comparison is what covers it. *)
                 note
-                  (Printf.sprintf "non-normalizable at %s+0x%x: %s" n.Image.nn_site.Image.o_section
-                     n.Image.nn_site.Image.o_offset n.Image.nn_expr)
-            | Image.Symbolic_ref r -> (
-                let site = r.Image.site in
+                  (Printf.sprintf "non-normalizable at %s+0x%x: %s"
+                     n.Rivet_image.nn_site.Rivet_image.o_section
+                     n.Rivet_image.nn_site.Rivet_image.o_offset n.Rivet_image.nn_expr)
+            | Rivet_image.Symbolic_ref r -> (
+                let site = r.Rivet_image.site in
                 let complaint, cls =
-                  classify ~target ~kind_name:site.Image.o_kind_name ~role:site.Image.o_role
-                    ~defined:r.Image.defined ~same_section:r.Image.same_section
+                  classify ~target ~kind_name:site.Rivet_image.o_kind_name
+                    ~role:site.Rivet_image.o_role ~defined:r.Rivet_image.defined
+                    ~same_section:r.Rivet_image.same_section
                 in
                 Option.iter note complaint;
                 match cls with
@@ -991,17 +1003,18 @@ module Make (C : CORPUS) = struct
                     site_line site r ty;
                     let rela = List.exists (fun x -> x.ro_rela) (reloc_records case target b) in
                     predicted :=
-                      ( site.Image.o_section,
-                        site.Image.o_offset,
+                      ( site.Rivet_image.o_section,
+                        site.Rivet_image.o_offset,
                         ty,
-                        oracle_symbol r.Image.symbol,
+                        oracle_symbol r.Rivet_image.symbol,
                         if rela then
                           Some
-                            (elf_addend ~pcrel:(is_pcrel site.Image.o_kind_name) ~site
-                               ~addend:r.Image.addend)
+                            (elf_addend
+                               ~pcrel:(is_pcrel site.Rivet_image.o_kind_name)
+                               ~site ~addend:r.Rivet_image.addend)
                         else None )
                       :: !predicted))
-          (Image.fixup_observations b.laid_out);
+          (Rivet_image.fixup_observations b.laid_out);
         let measured =
           List.map
             (fun r -> (r.ro_section, r.ro_offset, r.ro_type, r.ro_symbol, r.ro_addend))

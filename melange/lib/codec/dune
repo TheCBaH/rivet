@@ -5,7 +5,7 @@
  (files ../../../lib/codec/*.ml))
 
 (library
- (name codec)
+ (name rivet_codec)
  (modes byte native melange)
  (libraries rivet_foundation rivet_fmt)
  (enabled_if

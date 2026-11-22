@@ -916,8 +916,11 @@ let vlogic_bits op =
 let requirement op =
   match (find op).ext with
   | [] -> None
-  | [ f ] -> Some (Target_component.Req.Feature f)
-  | l -> Some (Target_component.Req.All (List.map (fun f -> Target_component.Req.Feature f) l))
+  | [ f ] -> Some (Rivet_target_features.Component.Req.Feature f)
+  | l ->
+      Some
+        (Rivet_target_features.Component.Req.All
+           (List.map (fun f -> Rivet_target_features.Component.Req.Feature f) l))
 
 (* The opcode of an encoding class: what decoding names a word it read. *)
 let of_enc enc = List.find_map (fun e -> if List.mem enc e.enc then Some e.op else None) all

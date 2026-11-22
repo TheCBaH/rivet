@@ -8,7 +8,7 @@
  (files ../../../lib/image/*.mli))
 
 (library
- (name image)
+ (name rivet_image)
  (modes byte native melange)
  (libraries rivet_foundation rivet_asm_core rivet_fmt)
  (enabled_if

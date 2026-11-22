@@ -7,7 +7,7 @@
 (executable
  (name test_compute_props)
  (modes exe)
- (libraries qcheck-core qcheck-core.runner compute rivet_foundation)
+ (libraries qcheck-core qcheck-core.runner rivet_compute rivet_foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

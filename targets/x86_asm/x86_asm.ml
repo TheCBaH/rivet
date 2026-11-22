@@ -74,7 +74,7 @@ module Regs (C : sig
   val registers : Reg.t list
   val make : Reg.t -> t
   val reg : t -> Reg.t
-end) : Target_encode.REGS with type t = C.t = struct
+end) : Rivet_target_encode.REGS with type t = C.t = struct
   type t = C.t
 
   let numbers =

@@ -1,10 +1,10 @@
-(* The model's table entries run over [Compute.Term] build expressions; those
+(* The model's table entries run over [Rivet_compute.Term] build expressions; those
    expressions, evaluated, equal what the concrete interpretation computes.
    Each of the 256 opcode bytes is stepped once from the same state in both. *)
 
 module C = I8080_sem.Model
-module T = Compute.Term
-module TM = Compute.Term_memory
+module T = Rivet_compute.Term
+module TM = Rivet_compute.Term_memory
 module Sym = I8080_sem.Make (T) (TM)
 
 let pattern a = ((a * 7) + 13) land 0xff
@@ -147,7 +147,7 @@ let trial ~vars ~flags op =
       | Write (a, v) -> events_s := ("write", ev a, ev v) :: !events_s
       | In (a, v) -> events_s := ("in", ev a, ev v) :: !events_s
       | Out (a, v) -> events_s := ("out", ev a, ev v) :: !events_s);
-  match Compute.try_step (fun () -> Sym.step sym_state) with
+  match Rivet_compute.try_step (fun () -> Sym.step sym_state) with
   | Error _ -> Skipped
   | Ok () ->
       C.step cst;

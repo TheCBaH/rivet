@@ -70,8 +70,8 @@ type options = {
   mutable overlays : string list list;
   mutable load_addresses : (string * int64) list;
   mutable at : (string * int64) list;
-  mutable features : Target_config.spec option;
-  mutable max_features : Target_config.spec option;
+  mutable features : Rivet_target_features.Config.spec option;
+  mutable max_features : Rivet_target_features.Config.spec option;
   mutable inspect : bool;
 }
 
@@ -158,12 +158,12 @@ let () =
         o.base <- Some (parse_base b);
         go rest
     | "--features" :: spec :: rest ->
-        (match Target_config.parse_spec spec with
+        (match Rivet_target_features.Config.parse_spec spec with
         | Ok s -> o.features <- Some s
         | Error m -> die ("invalid --features " ^ spec ^ ": " ^ m));
         go rest
     | "--max-features" :: spec :: rest ->
-        (match Target_config.parse_spec spec with
+        (match Rivet_target_features.Config.parse_spec spec with
         | Ok s -> o.max_features <- Some s
         | Error m -> die ("invalid --max-features " ^ spec ^ ": " ^ m));
         go rest
@@ -237,7 +237,7 @@ let () =
   in
   go (List.tl args);
   let target = match o.target with Some t -> t | None -> die "no --target" in
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with
     | Some d -> d
     | None ->
@@ -264,7 +264,7 @@ let () =
   let features = o.features in
   let request =
     {
-      Target_intf.Target.entry = o.entry;
+      Rivet_target_intf.Target.entry = o.entry;
       features;
       max_features = o.max_features;
       externs = o.externs;
@@ -289,27 +289,30 @@ let () =
       | None -> None
       | Some base ->
           let l = Lazy.force laid_out in
-          let plan = Image.plan_of l in
+          let plan = Rivet_image.plan_of l in
           let addresses =
             List.map
-              (fun (s : Image.segment_plan) ->
-                (s.Image.seg_name, Option.value (List.assoc_opt s.Image.seg_name o.at) ~default:base))
-              plan.Image.segments
+              (fun (s : Rivet_image.segment_plan) ->
+                ( s.Rivet_image.seg_name,
+                  Option.value (List.assoc_opt s.Rivet_image.seg_name o.at) ~default:base ))
+              plan.Rivet_image.segments
           in
           Some
             (ok
-               (Image.bind_image ~imports:o.imports ~overlays:o.overlays
+               (Rivet_image.bind_image ~imports:o.imports ~overlays:o.overlays
                   ~load_addresses:o.load_addresses l ~addresses)))
   in
   let text_of_image () =
     match Lazy.force bound with
-    | Some img -> Fmt.to_to_string Image.pp img
-    | None -> Fmt.to_to_string Image.pp_plan (Image.plan_of (Lazy.force laid_out))
+    | Some img -> Fmt.to_to_string Rivet_image.pp img
+    | None -> Fmt.to_to_string Rivet_image.pp_plan (Rivet_image.plan_of (Lazy.force laid_out))
   in
   let bytes_and_base () =
     match Lazy.force bound with
     | Some img -> (
-        match img.Image.segments with s :: _ -> (s.Image.bytes, s.Image.address) | [] -> ("", 0L))
+        match img.Rivet_image.segments with
+        | s :: _ -> (s.Rivet_image.bytes, s.Rivet_image.address)
+        | [] -> ("", 0L))
     | None -> die "disassembly needs --fixed-base (§9: the host chooses the address)"
   in
   let dumps = if o.dumps = [] then [ "dump-image" ] else o.dumps in
@@ -333,16 +336,18 @@ let () =
           let bytes, (_ : int64) = bytes_and_base () in
           print_string (hex_dump_of_bytes bytes)
       | "dump-features" -> (
-          match D.configure (Option.value features ~default:Target_config.default_spec) with
+          match
+            D.configure (Option.value features ~default:Rivet_target_features.Config.default_spec)
+          with
           | Error m -> die ("invalid --features: " ^ m)
           | Ok config ->
               Printf.printf "target: %s\n" D.name;
               Printf.printf "enabled: %s\n"
-                (match Target_config.features config with
+                (match Rivet_target_features.Config.features config with
                 | [] -> "(none)"
                 | fs -> String.concat "," fs);
               List.iter
-                (fun (c : Target_component.t) ->
+                (fun (c : Rivet_target_features.Component.t) ->
                   Printf.printf "component %s feature=%s%s: %s\n" c.id c.feature
                     (if c.requires = [] then "" else " requires=" ^ String.concat "," c.requires)
                     c.summary)

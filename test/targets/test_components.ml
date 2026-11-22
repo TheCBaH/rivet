@@ -21,23 +21,23 @@ let diagnostics_text ds =
 (* The diagnostic disassembly of [text] bound at a fixed address, or the rendered
    diagnostics if it does not assemble. *)
 let disasm_string target text =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds -> diagnostics_text ds
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
         List.map
-          (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x40000000L))
-          plan.Image.segments
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x40000000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> diagnostics_text ds
       | Ok img -> (
-          match img.Image.segments with
+          match img.Rivet_image.segments with
           | s :: _ -> (
-              match D.dump_disasm_diagnostic ~address:s.Image.address s.Image.bytes with
+              match D.dump_disasm_diagnostic ~address:s.Rivet_image.address s.Rivet_image.bytes with
               | Ok text -> text
               | Error ds -> diagnostics_text ds)
           | [] -> "(no segments)\n"))
@@ -244,10 +244,10 @@ let%expect_test "component descriptors are structurally clean in every profile" 
     Printf.printf "%s: %s\n" name
       (String.concat "; "
          (List.map
-            (fun (c : Target_component.t) ->
+            (fun (c : Rivet_target_features.Component.t) ->
               Printf.sprintf "%s feature=%s forms=%d" c.id c.feature (List.length c.forms))
             components));
-    List.iter (Printf.printf "  problem: %s\n") (Target_component.check components)
+    List.iter (Printf.printf "  problem: %s\n") (Rivet_target_features.Component.check components)
   in
   report "riscv32" Riscv32_encode.components;
   report "riscv64" Riscv64_encode.components;
@@ -261,11 +261,11 @@ let%expect_test "component descriptors are structurally clean in every profile" 
     x86_64: x86.x87 feature=x87 forms=13 |}]
 
 let%expect_test "Target_component.check reports collisions" =
-  let form label mnemonic sources : Target_component.form =
+  let form label mnemonic sources : Rivet_target_features.Component.form =
     { label; mnemonics = [ mnemonic ]; sources; legal = None }
   in
-  let src = [ { Target_component.upstream = "test"; name = "n" } ] in
-  let a : Target_component.t =
+  let src = [ { Rivet_target_features.Component.upstream = "test"; name = "n" } ] in
+  let a : Rivet_target_features.Component.t =
     {
       id = "t.a";
       feature = "a";
@@ -279,7 +279,7 @@ let%expect_test "Target_component.check reports collisions" =
       forms = [ form "x" "op" src; form "x" "op2" [] ];
     }
   in
-  let b : Target_component.t =
+  let b : Rivet_target_features.Component.t =
     {
       id = "t.a";
       feature = "b";
@@ -293,7 +293,7 @@ let%expect_test "Target_component.check reports collisions" =
       forms = [ form "y" "op" src ];
     }
   in
-  let empty : Target_component.t =
+  let empty : Rivet_target_features.Component.t =
     {
       id = "t.e";
       feature = "e";
@@ -307,7 +307,7 @@ let%expect_test "Target_component.check reports collisions" =
       forms = [];
     }
   in
-  List.iter print_endline (Target_component.check [ a; b; empty ]);
+  List.iter print_endline (Rivet_target_features.Component.check [ a; b; empty ]);
   [%expect
     {|
     t.a: form x has no source mapping
@@ -319,7 +319,7 @@ let%expect_test "Target_component.check reports collisions" =
 
 (* The x86 codec dump lists each alternative as "[priority cost=n] label ...". *)
 let dump_labels target =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   String.split_on_char '\n' (D.dump_codec ())
   |> List.filter_map (fun line ->
       match String.index_opt line ']' with
@@ -337,12 +337,12 @@ let%expect_test "x86 descriptor labels are all present in the codec dump" =
     (fun (target, components) ->
       let labels = dump_labels target in
       List.iter
-        (fun (c : Target_component.t) ->
+        (fun (c : Rivet_target_features.Component.t) ->
           List.iter
             (fun l ->
               if not (List.mem l labels) then
                 Printf.printf "%s: %s lacks alternative %s\n" target c.id l)
-            (Target_component.labels c))
+            (Rivet_target_features.Component.labels c))
         components;
       Printf.printf "%s: %d alternatives, all descriptor labels present\n" target
         (List.length labels))
@@ -649,12 +649,15 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
    available base. The base is listed here so a new form cannot join it by omission. *)
 let%expect_test "RISC-V mnemonics without an owning component" =
   let report target hand_written components =
-    let unowned = List.filter (fun n -> Target_component.legal components n = None) hand_written in
+    let unowned =
+      List.filter (fun n -> Rivet_target_features.Component.legal components n = None) hand_written
+    in
     let unowned =
       unowned
       @ List.filter_map
           (fun (r : Riscv_family_encode.Riscv_table_row.row) ->
-            if Target_component.legal components r.mnemonic <> None then None else Some r.mnemonic)
+            if Rivet_target_features.Component.legal components r.mnemonic <> None then None
+            else Some r.mnemonic)
           (Array.to_list Riscv_family_encode.Riscv_table_rows.rows)
     in
     let vector, rest = List.partition (fun n -> String.length n > 0 && n.[0] = 'v') unowned in
@@ -736,12 +739,14 @@ let%expect_test "generated RISC-V rows that overlap are all classified" =
    are the base ISA's. *)
 module Agree (E : module type of Riscv64_encode) = struct
   let report () =
-    let req r = Option.fold ~none:"-" ~some:(Fmt.str "%a" Target_component.Req.pp) r in
+    let req r =
+      Option.fold ~none:"-" ~some:(Fmt.str "%a" Rivet_target_features.Component.Req.pp) r
+    in
     let rows = List.map E.Row.mnemonic E.Row.all in
     let listed =
       List.concat_map
-        (fun (c : Target_component.t) ->
-          List.concat_map (fun (f : Target_component.form) -> f.mnemonics) c.forms)
+        (fun (c : Rivet_target_features.Component.t) ->
+          List.concat_map (fun (f : Rivet_target_features.Component.form) -> f.mnemonics) c.forms)
         E.components
     in
     let unmatched =
@@ -755,7 +760,7 @@ module Agree (E : module type of Riscv64_encode) = struct
       List.filter_map
         (fun op ->
           let typed = E.required (E.Instruction.mk op []) in
-          let named = Target_component.legal E.components (E.Opcode.name op) in
+          let named = Rivet_target_features.Component.legal E.components (E.Opcode.name op) in
           if req typed = req named then None else Some (E.Opcode.name op))
         E.Opcode.all
     in

@@ -51,7 +51,7 @@ let asm args =
 
 (* Deliberate model bugs, to show that the differential runs notice one. *)
 let plant name =
-  let mutate (module V : Compute.VALUE with type t = int) =
+  let mutate (module V : Rivet_compute.VALUE with type t = int) =
     let module R = I8080_run.Make (I8080_sem.Runnable (V)) in
     R.run
   in
@@ -59,23 +59,24 @@ let plant name =
   | "ult" ->
       mutate
         (module struct
-          include Compute.Concrete
+          include Rivet_compute.Concrete
 
           let ult a b = if a <= b then 1 else 0
         end)
   | "aux" ->
       mutate
         (module struct
-          include Compute.Concrete
+          include Rivet_compute.Concrete
 
-          let extract a ~hi ~lo = if hi = 4 && lo = 4 then 0 else Compute.Concrete.extract a ~hi ~lo
+          let extract a ~hi ~lo =
+            if hi = 4 && lo = 4 then 0 else Rivet_compute.Concrete.extract a ~hi ~lo
         end)
   | "carry" ->
       mutate
         (module struct
-          include Compute.Concrete
+          include Rivet_compute.Concrete
 
-          let add ~w a b = if w = 9 && a + b = 0x100 then 0 else Compute.Concrete.add ~w a b
+          let add ~w a b = if w = 9 && a + b = 0x100 then 0 else Rivet_compute.Concrete.add ~w a b
         end)
   | n -> die "unknown planted bug %s (ult, aux, carry)" n
 

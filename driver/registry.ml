@@ -12,7 +12,7 @@
    CLI, and any architecture-erased caller - sees [DRIVER] and never a
    target-specific type. *)
 
-module T_intf = Target_intf.Target
+module T_intf = Rivet_target_intf.Target
 
 (* Functor application happens once, here, at module level. The four results are
    ordinary modules; packing them into first-class module values below is what

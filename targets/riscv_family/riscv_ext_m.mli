@@ -21,8 +21,8 @@ val forms : form list
 val find : Riscv_types.Opcode.t -> form option
 (** The form of [op], if either component owns it. *)
 
-val zmmul : Target_component.t
+val zmmul : Rivet_target_features.Component.t
 (** Multiply only. Gated by the [zmmul] feature. *)
 
-val m : Target_component.t
+val m : Rivet_target_features.Component.t
 (** Adds division and remainder. Gated by the [m] feature, which requires [zmmul]. *)

@@ -40,7 +40,7 @@ let row ?(opcode = 0x0b) ?(feature = "") ~funct3 mnemonic : Row.row =
     source = "vendor/" ^ mnemonic;
   }
 
-let component ?(default_on = false) feature mnemonics : Target_component.t =
+let component ?(default_on = false) feature mnemonics : Rivet_target_features.Component.t =
   {
     id = "vendor." ^ feature;
     feature;
@@ -55,7 +55,7 @@ let component ?(default_on = false) feature mnemonics : Target_component.t =
       List.map
         (fun m ->
           {
-            Target_component.label = m;
+            Rivet_target_features.Component.label = m;
             mnemonics = [ m ];
             sources = [ { upstream = "vendor"; name = m } ];
             legal = None;
@@ -143,11 +143,13 @@ let _ : Types.Mem.t -> Riscv64_encode.Mem.t = Fun.id
 module Foo_driver = Pipeline.Make (Foo)
 module Bar_driver = Pipeline.Make (Bar)
 
-let assembled (module D : Target_intf.Target.DRIVER) ?features text =
+let assembled (module D : Rivet_target_intf.Target.DRIVER) ?features text =
   let features =
     Option.map
       (fun t ->
-        match Target_config.parse_spec t with Ok s -> s | Error m -> failwith ("bad spec: " ^ m))
+        match Rivet_target_features.Config.parse_spec t with
+        | Ok s -> s
+        | Error m -> failwith ("bad spec: " ^ m))
       features
   in
   let source =
@@ -156,18 +158,22 @@ let assembled (module D : Target_intf.Target.DRIVER) ?features text =
   match D.assemble ?features ~unit_name:"t" ~source () with
   | Error ds -> "REFUSED " ^ render ds
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
-        List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L)) plan.Image.segments
+        List.map
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds -> "REFUSED " ^ render ds
       | Ok img -> (
-          match img.Image.segments with s :: _ -> hex s.Image.bytes | [] -> "no segments"))
+          match img.Rivet_image.segments with
+          | s :: _ -> hex s.Rivet_image.bytes
+          | [] -> "no segments"))
 
 let%expect_test "two compositions coexist and keep the standard instructions" =
-  let foo = (module Foo_driver : Target_intf.Target.DRIVER) in
-  let bar = (module Bar_driver : Target_intf.Target.DRIVER) in
+  let foo = (module Foo_driver : Rivet_target_intf.Target.DRIVER) in
+  let bar = (module Bar_driver : Rivet_target_intf.Target.DRIVER) in
   let standard =
     match Driver.Registry.find "riscv64" with Some d -> d | None -> failwith "riscv64"
   in
@@ -223,7 +229,8 @@ let%expect_test "two compositions coexist and keep the standard instructions" =
 let%expect_test "the configured codec and encoder agree on the golden words" =
   let state =
     match
-      Target_config.resolve Foo.components (Result.get_ok (Target_config.parse_spec "+xfoo"))
+      Rivet_target_features.Config.resolve Foo.components
+        (Result.get_ok (Rivet_target_features.Config.parse_spec "+xfoo"))
     with
     | Ok c -> Foo.initial_state c
     | Error m -> failwith m
@@ -239,11 +246,12 @@ let%expect_test "the configured codec and encoder agree on the golden words" =
   | Ok _ -> print_endline "default: accepted"
   | Error _ -> print_endline "default: refused");
   let codec = Foo.codec_in state in
-  (match Codec.encode codec lowered with
+  (match Rivet_codec.encode codec lowered with
   | Ok e -> (
-      Printf.printf "codec_in: %s\n" (Codec.Bits.to_string e.Codec.bits);
-      match Codec.decode_bits codec e.bits with
-      | Some d -> Printf.printf "decoded: %s\n" (Fmt.to_to_string Foo.Lowered.pp d.Codec.value)
+      Printf.printf "codec_in: %s\n" (Rivet_codec.Bits.to_string e.Rivet_codec.bits);
+      match Rivet_codec.decode_bits codec e.bits with
+      | Some d ->
+          Printf.printf "decoded: %s\n" (Fmt.to_to_string Foo.Lowered.pp d.Rivet_codec.value)
       | None -> print_endline "decoded: none")
   | Error _ -> print_endline "codec_in: refused");
   [%expect
@@ -333,7 +341,7 @@ module Tile =
 module Tile_driver = Pipeline.Make (Tile)
 
 let%expect_test "tile operands encode and decode by name" =
-  let tile = (module Tile_driver : Target_intf.Target.DRIVER) in
+  let tile = (module Tile_driver : Rivet_target_intf.Target.DRIVER) in
   List.iter
     (fun (features, text) ->
       let bytes = assembled tile ~features text in
@@ -348,7 +356,7 @@ let%expect_test "tile operands encode and decode by name" =
           in
           match
             Tile_driver.dump_disasm_canonical
-              ~features:(Result.get_ok (Target_config.parse_spec features))
+              ~features:(Result.get_ok (Rivet_target_features.Config.parse_spec features))
               ~address:0L code
           with
           | Ok s -> String.trim s
@@ -447,7 +455,7 @@ module Mpause =
 module Mpause_driver = Pipeline.Make (Mpause)
 
 let%expect_test "mpause assembles, decodes, and leaves the standard system words alone" =
-  let (module D : Target_intf.Target.DRIVER) = (module Mpause_driver) in
+  let (module D : Rivet_target_intf.Target.DRIVER) = (module Mpause_driver) in
   let word w =
     String.init 4 (fun i -> Char.chr Int64.(to_int (logand (shift_right_logical w (8 * i)) 0xffL)))
   in
@@ -455,7 +463,9 @@ let%expect_test "mpause assembles, decodes, and leaves the standard system words
     let features =
       Option.map
         (fun t ->
-          match Target_config.parse_spec t with Ok s -> s | Error m -> failwith ("bad spec: " ^ m))
+          match Rivet_target_features.Config.parse_spec t with
+          | Ok s -> s
+          | Error m -> failwith ("bad spec: " ^ m))
         features
     in
     match D.dump_disasm_canonical ?features ~address:0L (word w) with

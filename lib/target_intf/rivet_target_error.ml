@@ -27,8 +27,8 @@
    version of the string it replaced.
 
    What is left is genuinely common. A target includes it as
-   [ Target_error.shared | ... ] and delegates in its printer with
-   [ #Target_error.shared as e ].
+   [ Rivet_target_error.shared | ... ] and delegates in its printer with
+   [ #Rivet_target_error.shared as e ].
 
    Codes are deliberately not here. The same tag is [x86.simplify] on one target
    and [arm.lower] on another, because the phase that detects it differs, so the
@@ -46,7 +46,7 @@ let make ~origin kind = { kind; origin }
 let kind e = e.kind
 let origin e = e.origin
 
-(* The erasure boundary, named so it is visible as one. {!Image} holds a
+(* The erasure boundary, named so it is visible as one. {!Rivet_image} holds a
    target-supplied fixup evaluator and {!Target.DRIVER} erases the architecture
    entirely, so neither can carry a target's error type; a target renders here
    and a diagnostic is what crosses. Everything below this call keeps the

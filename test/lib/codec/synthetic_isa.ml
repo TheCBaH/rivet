@@ -10,7 +10,7 @@
    instruction type, guarded by that constructor - so the shape the four M1
    targets use is exercised before any of them exist. *)
 
-open Codec
+open Rivet_codec
 
 (* {1 Fixup kinds}
 

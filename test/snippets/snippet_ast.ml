@@ -108,7 +108,7 @@ let named c = List.map (fun (name, get) -> (name, get c)) fields
 
 (* {1 The staged assembler}
 
-   Over {!Target_encode.ENCODE} rather than TARGET, so the four corpora below
+   Over {!Rivet_target_encode.ENCODE} rather than TARGET, so the four corpora below
    share one path and none can quietly take a shortcut. Entries are built at
    the *normalized* stage and pushed through both remaining stages, so this
    exercises lowering as well as encoding - an encoder fed lowered forms
@@ -122,7 +122,7 @@ let named c = List.map (fun (name, get) -> (name, get c)) fields
    machinery for reading one, and until that signature was split, naming any
    part of a target required all of it. *)
 
-module Make (T : Target_encode.ENCODE) = struct
+module Make (T : Rivet_target_encode.ENCODE) = struct
   exception Refuse of string
 
   (* This harness reports refusals as prose, so a target failure is rendered on
@@ -205,19 +205,20 @@ module Make (T : Target_encode.ENCODE) = struct
                   (fun d -> Rivet_foundation.Diagnostic.message d)
                   (Rivet_foundation.Diag.diagnostics e)))
         in
-        match Image.plan_image ~evaluate Image.default_policy [ m ] with
+        match Rivet_image.plan_image ~evaluate Rivet_image.default_policy [ m ] with
         | Error ds -> fail ds
         | Ok laid_out -> (
-            match Image.bind_image laid_out ~addresses:[ (".text", base) ] with
+            match Rivet_image.bind_image laid_out ~addresses:[ (".text", base) ] with
             | Error ds -> fail ds
             | Ok img -> (
                 match
                   List.find_opt
-                    (fun (s : Image.segment) -> String.equal s.Image.name ".text")
-                    img.Image.segments
+                    (fun (s : Rivet_image.segment) -> String.equal s.Rivet_image.name ".text")
+                    img.Rivet_image.segments
                 with
                 | None -> Refused "the bound image has no .text"
-                | Some s -> Assembled { bytes = s.Image.bytes; canonical = List.map snd parts })))
+                | Some s ->
+                    Assembled { bytes = s.Rivet_image.bytes; canonical = List.map snd parts })))
     | exception Refuse m -> Refused m
 
   (* Padding is the target's answer too, and the [.align] fill is the one blob
@@ -601,7 +602,7 @@ module X86_shared = struct
   (* [.] and [. + k], the two branch targets §16.3 needs. A snippet has no
      labels, so a self-loop and a forward jump over three instructions are both
      written against the current location - which is exactly how GAS reads
-     [jmp .], and why {!Image} resolves [.] to the instruction address rather
+     [jmp .], and why {!Rivet_image} resolves [.] to the instruction address rather
      than to the PC the architecture measures from. *)
   let here = Operand.Sym Rivet_asm_core.Expr.Current_location
 

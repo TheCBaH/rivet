@@ -2,12 +2,12 @@
    the canonical printer.
 
    Everything instruction-specific is read from {!I8080_ops}. This library
-   satisfies {!Target_encode.ENCODE} and reaches no lexer; {!I8080} adds the
+   satisfies {!Rivet_target_encode.ENCODE} and reaches no lexer; {!I8080} adds the
    text front end. The 8080 has no relative branches, no prefixes and one
    instruction length per opcode, so every encoding is [`Fixed]. *)
 
 open Rivet_foundation
-module C = Codec
+module C = Rivet_codec
 module Ops = I8080_ops
 module L = Rivet_asm_core.Lowered_ast
 
@@ -53,10 +53,10 @@ module Opcode = struct
 end
 
 type error_kind =
-  [ Target_error.shared
+  [ Rivet_target_error.shared
   | `Bad_operand of bad_operand
   | `Out_of_range of out_of_range
-  | `Codec of Codec.error
+  | `Codec of Rivet_codec.error
   | `Decode_short
   | `Decode_no_match
   | `Fixup_out_of_range of int64 * int
@@ -69,15 +69,15 @@ type error_kind =
 and bad_operand = { mnemonic : string; index : int; expected : string }
 and out_of_range = { what : string; value : Bigint.t; low : int; high : int }
 
-type error = error_kind Target_error.t
+type error = error_kind Rivet_target_error.t
 
 let pp_error_kind ppf : error_kind -> unit = function
-  | #Target_error.shared as e -> Target_error.pp_shared ppf e
+  | #Rivet_target_error.shared as e -> Rivet_target_error.pp_shared ppf e
   | `Bad_operand { mnemonic; index; expected } ->
       Fmt.pf ppf "%s: operand %d must be %s" mnemonic (index + 1) expected
   | `Out_of_range { what; value; low; high } ->
       Fmt.pf ppf "%s %a does not fit %d..%d" what Bigint.pp value low high
-  | `Codec e -> Codec.pp_error ppf e
+  | `Codec e -> Rivet_codec.pp_error ppf e
   | `Decode_short -> Fmt.string ppf "instruction is cut short"
   | `Decode_no_match -> Fmt.string ppf "no instruction matches these bytes"
   | `Fixup_out_of_range (v, bits) -> Fmt.pf ppf "value %Ld does not fit %d bits" v bits
@@ -97,13 +97,13 @@ let error_kind_code : error_kind -> string = function
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "i8080.decode"
   | `Fixup_out_of_range _ | `No_data_relocation _ -> "i8080.fixup"
 
-let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
-let error_code e = error_kind_code (Target_error.kind e)
-let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+let pp_error ppf e = pp_error_kind ppf (Rivet_target_error.kind e)
+let error_code e = error_kind_code (Rivet_target_error.kind e)
+let error_diagnostic e = Rivet_target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
 
 let diag ?pos ?origin kind =
   Err.Error.make ?pos ~pp_error
-    (Target_error.make
+    (Rivet_target_error.make
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"i8080" ())
        kind)
 
@@ -212,11 +212,11 @@ let fixup_role (_ : fixup_kind) = L.Data_address
 type target_state = unit
 
 let default_state = ()
-let components : Target_component.t list = []
-let default_config = Target_config.default components
-let initial_state (_ : Target_config.t) = default_state
+let components : Rivet_target_features.Component.t list = []
+let default_config = Rivet_target_features.Config.default components
+let initial_state (_ : Rivet_target_features.Config.t) = default_state
 let state_config (_ : target_state) = default_config
-let required (_ : Instruction.t) : Target_component.Req.t option = None
+let required (_ : Instruction.t) : Rivet_target_features.Component.Req.t option = None
 let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
 (* {1 Simplify} *)

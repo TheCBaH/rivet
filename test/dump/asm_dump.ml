@@ -24,7 +24,7 @@ let hex s =
 let banner title = Printf.printf "########## %s\n" title
 
 let run (i : Test_dump_inputs.input) =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find i.target with Some d -> d | None -> exit 1
   in
   let name = i.target ^ " " ^ i.case in
@@ -39,16 +39,18 @@ let run (i : Test_dump_inputs.input) =
   banner (name ^ " lowered ast");
   print_endline (ok (D.dump_lowered_ast ~unit_name ~source ()));
   let laid_out = ok (D.assemble ~unit_name ~source ()) in
-  let plan = Image.plan_of laid_out in
+  let plan = Rivet_image.plan_of laid_out in
   banner (name ^ " plan");
-  print_endline (Fmt.to_to_string Image.pp_plan plan);
+  print_endline (Fmt.to_to_string Rivet_image.pp_plan plan);
   let addresses =
-    List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
+    List.map
+      (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0L))
+      plan.Rivet_image.segments
   in
-  let img = ok (Image.bind_image laid_out ~addresses) in
+  let img = ok (Rivet_image.bind_image laid_out ~addresses) in
   banner (name ^ " image");
-  print_endline (Fmt.to_to_string Image.pp img);
-  let bytes = match img.Image.segments with s :: _ -> s.Image.bytes | [] -> "" in
+  print_endline (Fmt.to_to_string Rivet_image.pp img);
+  let bytes = match img.Rivet_image.segments with s :: _ -> s.Rivet_image.bytes | [] -> "" in
   banner (name ^ " bytes");
   print_endline (hex bytes);
   banner (name ^ " disasm canonical");

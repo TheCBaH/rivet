@@ -15,12 +15,12 @@
    families could not be told apart by name. Under modules the family is the
    qualifier, [Opcode.Add] and [Operand.Reg] compose without collision, the
    record fields lose their [i_]/[s_]/[m_] disambiguators, and a hand-written
-   AST reads as the assembly it stands for. {!Target_intf.Target.TARGET} names
+   AST reads as the assembly it stands for. {!Rivet_target_intf.Target.TARGET} names
    the same modules, so a target satisfies it by exposing what it already has
    rather than by restating each type and printer as a loose alias. *)
 
 open Rivet_foundation
-module C = Codec
+module C = Rivet_codec
 include Aarch64_types
 module Aarch64_ops = Aarch64_ops
 
@@ -850,12 +850,12 @@ let default_state = { unused = () }
 
 (* No separable components: this target's whole instruction set is the always-available base, so
    there is nothing to enable or disable and every configuration is the empty one. *)
-let components : Target_component.t list = []
-let default_config = Target_config.default components
-let initial_state (_ : Target_config.t) = default_state
+let components : Rivet_target_features.Component.t list = []
+let default_config = Rivet_target_features.Config.default components
+let initial_state (_ : Rivet_target_features.Config.t) = default_state
 let state_config (_ : target_state) = default_config
 
-let required (i : Instruction.t) : Target_component.Req.t option =
+let required (i : Instruction.t) : Rivet_target_features.Component.Req.t option =
   Aarch64_ops.requirement i.Instruction.op
 
 (* {1 Scaled immediates}
@@ -3106,13 +3106,13 @@ let triple = "aarch64-linux-gnu"
    alone for now, and why [diag] returns the wrapped error. *)
 (* The A64 encoder's error domain (docs/errors.md). Below source text, so it
    names no token; the front end's operand failures are a separate domain in
-   aarch64.ml, for the reason {!Target_intf.Target.TARGET} gives.
+   aarch64.ml, for the reason {!Rivet_target_intf.Target.TARGET} gives.
 
    [`Not_bitmask_immediate] carries its value for the same reason ARM's
    modified-immediate tag does: an A64 logical immediate is a rotated run of
    ones, so which constant failed is the entire fact. *)
 type error_kind =
-  [ Target_error.shared
+  [ Rivet_target_error.shared
   | `Imm12_needs_shift
   | `Imm12_unshifted
   | `Imm12_needs_lsl12_form
@@ -3142,7 +3142,7 @@ type error_kind =
   | `Unknown_condition of string
   | `Csel_needs_condition
   | `Udf_imm16_overflow
-  | `Codec of Codec.error
+  | `Codec of Rivet_codec.error
   | `Decode_short
   | `Decode_no_match
   | `Branch_not_word_aligned
@@ -3156,10 +3156,10 @@ type error_kind =
 and wrong_register_width = { subject : width_subject; expected : int }
 and width_subject = Op of Opcode.t | Index of Extend.t
 
-type error = error_kind Target_error.t
+type error = error_kind Rivet_target_error.t
 
 let pp_error_kind ppf : error_kind -> unit = function
-  | #Target_error.shared as e -> Target_error.pp_shared ppf e
+  | #Rivet_target_error.shared as e -> Rivet_target_error.pp_shared ppf e
   | `Imm12_needs_shift ->
       Fmt.string ppf "immediate does not fit the unshifted 12-bit field; lsl #12 is M2"
   | `Imm12_unshifted -> Fmt.string ppf "immediate does not fit the unshifted 12-bit field"
@@ -3203,7 +3203,7 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Unknown_condition c -> Fmt.pf ppf "unknown condition %s" c
   | `Csel_needs_condition -> Fmt.string ppf "csel needs a condition name"
   | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
-  | `Codec e -> Codec.pp_error ppf e
+  | `Codec e -> Rivet_codec.pp_error ppf e
   | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
   | `Decode_no_match -> Fmt.string ppf "no form matches this word"
   | `Branch_not_word_aligned -> Fmt.string ppf "branch target is not word-aligned"
@@ -3217,20 +3217,20 @@ let pp_error_kind ppf : error_kind -> unit = function
 
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "aarch64.simplify"
-  | `Codec e -> Option.value (Codec.code e) ~default:"aarch64.encode"
+  | `Codec e -> Option.value (Rivet_codec.code e) ~default:"aarch64.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "aarch64.decode"
   | `Branch_not_word_aligned | `Branch_out_of_range | `Lo12_misaligned -> "aarch64.fixup"
   | `No_data_relocation _ -> "aarch64.data-fixup"
   | `Padding_not_word_multiple -> "aarch64.nop"
   | _ -> "aarch64.lower"
 
-let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
-let error_code e = error_kind_code (Target_error.kind e)
-let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+let pp_error ppf e = pp_error_kind ppf (Rivet_target_error.kind e)
+let error_code e = error_kind_code (Rivet_target_error.kind e)
+let error_diagnostic e = Rivet_target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
 
 let diag ?pos ?origin kind =
   Err.Error.make ?pos ~pp_error
-    (Target_error.make
+    (Rivet_target_error.make
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"aarch64" ())
        kind)
 

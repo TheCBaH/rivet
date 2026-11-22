@@ -16,19 +16,21 @@ let ok_diag = function Ok v -> v | Error e -> failwith (Rivet_foundation.Diag.re
 
 let parser_encoder_summary () =
   let name = "x86_64" in
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find name with
     | Some d -> d
     | None -> failwith ("smoke: no driver for " ^ name)
   in
   let source = Rivet_foundation.Span.source ~name:(name ^ ".s") ~contents:Test_dump_inputs.x86_64 in
   let laid_out = ok_diag (D.assemble ~unit_name:"asm_test_entry" ~source ()) in
-  let plan = Image.plan_of laid_out in
+  let plan = Rivet_image.plan_of laid_out in
   let addresses =
-    List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
+    List.map
+      (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0L))
+      plan.Rivet_image.segments
   in
-  let img = ok_diag (Image.bind_image laid_out ~addresses) in
-  let bytes = match img.Image.segments with s :: _ -> s.Image.bytes | [] -> "" in
+  let img = ok_diag (Rivet_image.bind_image laid_out ~addresses) in
+  let bytes = match img.Rivet_image.segments with s :: _ -> s.Rivet_image.bytes | [] -> "" in
   Printf.sprintf "parser+encoder(%s): %d bytes\n" name (String.length bytes)
 
 let ok_portable = function

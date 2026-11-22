@@ -7,13 +7,13 @@ let seed = 20261119
 module Q = QCheck2
 module G = Q.Gen
 module B = Rivet_foundation.Bigint
-module C = Compute.Concrete
-module C64 = Compute.Concrete64
-module T = Compute.Term
-module Mem = Compute.Sparse_memory
+module C = Rivet_compute.Concrete
+module C64 = Rivet_compute.Concrete64
+module T = Rivet_compute.Term
+module Mem = Rivet_compute.Sparse_memory
 
 let ( let* ) = G.bind
-let mask = Compute.Width.mask64
+let mask = Rivet_compute.Width.mask64
 let big x = B.of_string_exn (Printf.sprintf "%Lu" x)
 let pow2 n = B.shift_left_exn B.one n
 let modw w x = B.rem_exn x (pow2 w)
@@ -278,7 +278,7 @@ let env_value env_seed name =
   | _ -> Int64.(mul (of_int (h + 1)) 0x9e3779b97f4a7c15L)
 
 module Interp (V : sig
-  include Compute.VALUE
+  include Rivet_compute.VALUE
 
   val var : w:int -> string -> t
   val const64 : w:int -> int64 -> t

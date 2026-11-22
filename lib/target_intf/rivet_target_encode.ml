@@ -103,12 +103,12 @@ module type ENCODE = sig
 
      Abstract for the same reason the ASTs are: generic code moves a target's
      failures around and renders them, and must not be able to inspect one.
-     Each target's domain is {!Target_error.t} plus its own tags, so the shared
+     Each target's domain is {!Rivet_target_error.t} plus its own tags, so the shared
      kinds - unknown mnemonic, no such form, out of range - are one row rather
      than three copies (docs/errors.md §1).
 
      [error_diagnostic] is the erasure boundary, named so it is visible as one:
-     {!Image} holds a target-supplied fixup evaluator and {!Target.DRIVER}
+     {!Rivet_image} holds a target-supplied fixup evaluator and {!Target.DRIVER}
      erases the architecture entirely, so neither can carry this type. Below
      that call the payload survives; at it, a diagnostic is what crosses. *)
 
@@ -156,20 +156,20 @@ module type ENCODE = sig
   (* {1 Configuration}
 
      A target's optional instruction components (RISC-V M, x86 x87, ...) are published as data and
-     gated by feature name. The validated {!Target_config.t} lives inside {!target_state}, so it
+     gated by feature name. The validated {!Rivet_target_features.Config.t} lives inside {!target_state}, so it
      reaches every stage that already takes the state, and each unit assembled by
      [assemble_many] starts from its own initial state. *)
 
-  val components : Target_component.t list
+  val components : Rivet_target_features.Component.t list
   (** the separable components this target has; empty for one whose whole instruction set is the
       always-available base *)
 
-  val initial_state : Target_config.t -> target_state
+  val initial_state : Rivet_target_features.Config.t -> target_state
   (** [default_state] under a validated configuration *)
 
-  val state_config : target_state -> Target_config.t
+  val state_config : target_state -> Rivet_target_features.Config.t
 
-  val required : Instruction.t -> Target_component.Req.t option
+  val required : Instruction.t -> Rivet_target_features.Component.Req.t option
   (** the predicate that makes [i] legal, or [None] for a base instruction *)
 
   val make_surface_instruction :
@@ -194,10 +194,10 @@ module type ENCODE = sig
      The codec is a view of the target's forms, not their authority: where a
      target has per-opcode or generated row tables, those tables are the
      description and the codec, or the part of it that is a tree, is derived
-     from them (docs/contracts.md §1.7). [Codec.check] and [--dump-codec] cover
+     from them (docs/contracts.md §1.7). [Rivet_codec.check] and [--dump-codec] cover
      the tree; the row tables carry their own checks in the test suite. *)
 
-  val codec : (Lowered.t, fixup_kind) Codec.t
+  val codec : (Lowered.t, fixup_kind) Rivet_codec.t
   (** The codec of the default configuration. A target with optional extensions may also offer a
       codec per configuration; this one leaves out whatever the default does not enable. *)
 
@@ -213,7 +213,7 @@ module type ENCODE = sig
       in generic code would mean the generic code knew which targets are fixed-width, and putting
       it in the codec would mean [inspect] printed a form the machine does not contain.
 
-      Converting a {!Codec.placement} into a {!Rivet_asm_core.Lowered_ast.fixup} happens here for the same
+      Converting a {!Rivet_codec.placement} into a {!Rivet_asm_core.Lowered_ast.fixup} happens here for the same
       reason: only the target knows that its bit positions have just been reversed, and only it can
       say what PC the architecture measures from.
 
@@ -273,7 +273,7 @@ module type ENCODE = sig
       kinds are told apart by {!equal_fixup_kind}, never by comparing these. *)
 
   val equal_fixup_kind : fixup_kind -> fixup_kind -> bool
-  (** identity. [Codec.check] groups a split fixup's slices by name and has to confirm they agree on
+  (** identity. [Rivet_codec.check] groups a split fixup's slices by name and has to confirm they agree on
       the kind; it cannot use polymorphic equality on an abstract type that may one day hold a
       function, and a printed name is not identity. *)
 
@@ -315,7 +315,7 @@ module type ENCODE = sig
       agree on one long-NOP table, but [x86_32]'s linker fills with repeated 2-byte [66 90] alone,
       regardless of the wider LEA-based table [as] uses for [.align]. [None] is every other target,
       and it is the correct answer there: every non-executable gap everywhere, and every gap on
-      [arm]/[aarch64]/[riscv32]/[riscv64], is plain zero fill, which [Image.plan_image]'s default
+      [arm]/[aarch64]/[riscv32]/[riscv64], is plain zero fill, which [Rivet_image.plan_image]'s default
       [~fill] already produces without a callback. *)
 
   val pad_section_to_alignment : bool

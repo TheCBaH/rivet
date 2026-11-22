@@ -11,7 +11,7 @@ module A = Driver_direct.Pipeline_direct.Make (Aarch64_encode)
 module R = Driver_direct.Pipeline_direct.Make (Riscv32_encode)
 
 let show = function
-  | Ok rs -> List.iter (fun (r : Target_encode.disasm_record) -> print_endline r.text) rs
+  | Ok rs -> List.iter (fun (r : Rivet_target_encode.disasm_record) -> print_endline r.text) rs
   | Error _ -> ()
 
 let () =

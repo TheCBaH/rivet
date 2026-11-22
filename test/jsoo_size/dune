@@ -9,7 +9,7 @@
  (libraries
   rivet_asm_core
   driver
-  target_intf
+  rivet_target_intf
   x86_64_encode
   aarch64_encode
   riscv32_encode)
@@ -23,7 +23,7 @@
  (libraries
   rivet_asm_core
   text_pipeline
-  target_encode
+  rivet_target_encode
   x86_64
   aarch64
   riscv32)
@@ -37,7 +37,7 @@
  (libraries
   rivet_asm_core
   driver_direct
-  target_encode
+  rivet_target_encode
   x86_64_encode
   aarch64_encode
   riscv32_encode)
@@ -51,7 +51,7 @@
  (libraries
   rivet_asm_core
   driver_direct
-  target_encode
+  rivet_target_encode
   aarch64_encode
   riscv32_encode)
  (enabled_if

@@ -280,7 +280,7 @@ end
    The 4-bit [tttn] field, declared in its encoding order so the code *is* the
    position and the two cannot disagree. All sixteen are named although the M2
    fixtures use four: the field is a complete finite domain, which is what lets
-   {!Codec.check} decide the table's injectivity and totality instead of the
+   {!Rivet_codec.check} decide the table's injectivity and totality instead of the
    author asserting them.
 
    One condition has several accepted spellings - [jc] and [jnae] are [jb], [jz]

@@ -11,7 +11,7 @@ let show_list label = function
   | [] -> Printf.printf "%s: none\n" label
   | xs -> List.iter (fun x -> Printf.printf "%s: %s\n" label x) xs
 
-(* {1 What Codec.check can decide}
+(* {1 What Rivet_codec.check can decide}
 
    Syntactic properties only, and the boundary matters: an empty problem list
    is not "this codec is correct", it is "field widths, table injectivity,
@@ -23,7 +23,7 @@ let show_list label = function
 
 let%expect_test "every target's codec passes Codec.check" =
   List.iter
-    (fun (module D : Target_intf.Target.DRIVER) -> show_list D.name (D.check_codec ()))
+    (fun (module D : Rivet_target_intf.Target.DRIVER) -> show_list D.name (D.check_codec ()))
     Driver.Registry.drivers;
   [%expect
     {|
@@ -79,16 +79,16 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
   in
   List.iter
     (fun value ->
-      match Codec.encode codec value with
+      match Rivet_codec.encode codec value with
       | Error _ -> print_endline "encode failed"
       | Ok encoded -> (
           Printf.printf "%s %d bits %s\n"
-            (String.concat "." encoded.Codec.form)
-            (Codec.Bits.width encoded.bits)
-            (Codec.Bits.to_string encoded.bits);
-          match Codec.decode_bits codec encoded.bits with
+            (String.concat "." encoded.Rivet_codec.form)
+            (Rivet_codec.Bits.width encoded.bits)
+            (Rivet_codec.Bits.to_string encoded.bits);
+          match Rivet_codec.decode_bits codec encoded.bits with
           | Some decoded ->
-              Printf.printf "decoded %d bits, equal=%b\n" decoded.Codec.consumed
+              Printf.printf "decoded %d bits, equal=%b\n" decoded.Rivet_codec.consumed
                 (Lowered.equal value decoded.value)
           | None -> print_endline "decode failed"))
     values;
@@ -110,7 +110,7 @@ let driver name =
 let source text = Rivet_foundation.Span.source ~name:"<test>" ~contents:text
 
 let show_tokens target text =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   match D.dump_tokens ~source:(source text) with
   | Ok dump -> print_string dump
   | Error ds ->
@@ -144,7 +144,7 @@ let%expect_test "modifier spellings are declared by the lexical profile" =
     |}]
 
 let%expect_test "target state is replayed in source order across push and pop" =
-  let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "riscv64" in
   let text =
     {|
 .text
@@ -197,9 +197,10 @@ addi x0, x0, 0
 
 let%expect_test "the modified-immediate relation round-trips exhaustively" =
   let dom = Arm.modimm_domain in
-  Printf.printf "%s\n" (Fmt.to_to_string Codec.Finite.pp_domain dom);
+  Printf.printf "%s\n" (Fmt.to_to_string Rivet_codec.Finite.pp_domain dom);
   let failures =
-    Codec.Finite.round_trip Arm.modimm_codec dom ~equal:Int64.equal ~show:(Printf.sprintf "0x%Lx")
+    Rivet_codec.Finite.round_trip Arm.modimm_codec dom ~equal:Int64.equal
+      ~show:(Printf.sprintf "0x%Lx")
   in
   show_list "round-trip failures" failures;
   [%expect
@@ -247,12 +248,14 @@ let%expect_test "canonical modified-immediate selection matches GNU as" =
 
 let%expect_test "the scaled-offset relations round-trip over their declared domains" =
   let check dom codec =
-    Printf.printf "%s\n" (Fmt.to_to_string Codec.Finite.pp_domain dom);
+    Printf.printf "%s\n" (Fmt.to_to_string Rivet_codec.Finite.pp_domain dom);
     show_list "  failures"
-      (Codec.Finite.round_trip codec dom ~equal:Int64.equal ~show:(Printf.sprintf "%Ld"))
+      (Rivet_codec.Finite.round_trip codec dom ~equal:Int64.equal ~show:(Printf.sprintf "%Ld"))
   in
-  check Aarch64.uoff12_domain (Aarch64.scaled ~shift:3 ~width:12 ~signedness:Codec.Unsigned "imm12");
-  check Aarch64.stp_imm7_domain (Aarch64.scaled ~shift:3 ~width:7 ~signedness:Codec.Signed "imm7");
+  check Aarch64.uoff12_domain
+    (Aarch64.scaled ~shift:3 ~width:12 ~signedness:Rivet_codec.Unsigned "imm12");
+  check Aarch64.stp_imm7_domain
+    (Aarch64.scaled ~shift:3 ~width:7 ~signedness:Rivet_codec.Signed "imm7");
   [%expect
     {|
     aarch64.ldr-uoff12: 5 values, deterministic sample
@@ -273,9 +276,9 @@ let%expect_test "the bitmask-immediate relations round-trip exhaustively" =
   List.iter
     (fun datasize ->
       let dom = Aarch64.bitmask_domain ~datasize in
-      Printf.printf "%s\n" (Fmt.to_to_string Codec.Finite.pp_domain dom);
+      Printf.printf "%s\n" (Fmt.to_to_string Rivet_codec.Finite.pp_domain dom);
       show_list "  failures"
-        (Codec.Finite.round_trip (Aarch64.bitmask_codec ~datasize) dom ~equal:Int64.equal
+        (Rivet_codec.Finite.round_trip (Aarch64.bitmask_codec ~datasize) dom ~equal:Int64.equal
            ~show:(Printf.sprintf "0x%Lx")))
     [ 32; 64 ];
   [%expect
@@ -322,7 +325,7 @@ let%expect_test "which small constants are bitmask immediates" =
    than one module, remain M3. *)
 
 let attempt target text =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
@@ -406,7 +409,7 @@ let%expect_test "RISC-V branch, jump, and rounded split boundaries are exact" =
     |}]
 
 let show_decode target bytes =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   match D.dump_disasm_canonical ~address:0L bytes with
   | Ok text -> Printf.printf "%s: %s" target text
   | Error ds ->
@@ -646,7 +649,7 @@ let%expect_test "binding-directive transitions match the measured GNU as table" 
      whenever [.weak] has not applied - all six ordered pairs, through the
      real directive table and the real transition function, not called
      directly. *)
-  let (module D : Target_intf.Target.DRIVER) = driver "x86_64" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "x86_64" in
   let show first second =
     let text = Printf.sprintf ".%s x\n.%s x\n" first second in
     match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) () with
@@ -693,7 +696,7 @@ let%expect_test "binding-directive transitions match the measured GNU as table" 
    both browser adapters stuck with the inference. *)
 
 let entry_of ?entry target text =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
@@ -704,13 +707,13 @@ let entry_of ?entry target text =
         (Rivet_foundation.Diag.diagnostics ds);
       None
   | Ok laid_out -> (
-      match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
+      match Rivet_image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
       | Error ds ->
           List.iter
             (fun d -> Printf.printf "%s\n" (Rivet_foundation.Diagnostic.code d))
             (Rivet_foundation.Diag.diagnostics ds);
           None
-      | Ok img -> Some img.Image.entry)
+      | Ok img -> Some img.Rivet_image.entry)
 
 let two_globals =
   {|	.text
@@ -787,25 +790,27 @@ let%expect_test "code before any section directive has nowhere to go" =
    gets a rejection rather than a misaligned image. *)
 
 let%expect_test "binding at a misaligned address is rejected" =
-  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "aarch64") in
+  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "aarch64") in
   let source =
     Rivet_foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\t.balign 4\n\tret\n"
   in
   match D.assemble ~unit_name:"t" ~source () with
   | Error _ -> print_endline "unexpected: did not assemble"
   | Ok l ->
-      (let plan = Image.plan_of l in
+      (let plan = Rivet_image.plan_of l in
        let at base =
-         List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, base)) plan.Image.segments
+         List.map
+           (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, base))
+           plan.Rivet_image.segments
        in
-       (match Image.bind_image l ~addresses:(at 0x40000002L) with
+       (match Rivet_image.bind_image l ~addresses:(at 0x40000002L) with
        | Ok _ -> print_endline "accepted a misaligned address"
        | Error ds ->
            List.iter
              (fun d -> print_endline (Rivet_foundation.Diagnostic.message d))
              (Rivet_foundation.Diag.diagnostics ds));
-       match Image.bind_image l ~addresses:(at 0x40000000L) with
-       | Ok img -> print_endline (Fmt.to_to_string Image.pp img)
+       match Rivet_image.bind_image l ~addresses:(at 0x40000000L) with
+       | Ok img -> print_endline (Fmt.to_to_string Rivet_image.pp img)
        | Error _ -> print_endline "unexpected: aligned binding failed");
       [%expect
         {|
@@ -822,7 +827,7 @@ let%expect_test "binding at a misaligned address is rejected" =
    does not exist yet. *)
 
 let normalized target text =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
@@ -870,7 +875,7 @@ let%expect_test "a numeric label with no reference is still a defined symbol" =
    reference picked. *)
 
 let dump_norm target text =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
@@ -943,7 +948,7 @@ let%expect_test "a reference with no definition in its direction is a diagnostic
    at one of those boundaries. *)
 
 let disasm target text =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
@@ -956,13 +961,13 @@ let disasm target text =
             (Rivet_foundation.Diagnostic.message d))
         (Rivet_foundation.Diag.diagnostics ds)
   | Ok laid_out -> (
-      let plan = Image.plan_of laid_out in
+      let plan = Rivet_image.plan_of laid_out in
       let addresses =
         List.map
-          (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x40000000L))
-          plan.Image.segments
+          (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x40000000L))
+          plan.Rivet_image.segments
       in
-      match Image.bind_image laid_out ~addresses with
+      match Rivet_image.bind_image laid_out ~addresses with
       | Error ds ->
           List.iter
             (fun d ->
@@ -971,9 +976,9 @@ let disasm target text =
                 (Rivet_foundation.Diagnostic.message d))
             (Rivet_foundation.Diag.diagnostics ds)
       | Ok img -> (
-          match img.Image.segments with
+          match img.Rivet_image.segments with
           | s :: _ -> (
-              match D.dump_disasm_diagnostic ~address:s.Image.address s.Image.bytes with
+              match D.dump_disasm_diagnostic ~address:s.Rivet_image.address s.Rivet_image.bytes with
               | Ok text -> print_string text
               | Error ds ->
                   List.iter
@@ -1046,20 +1051,23 @@ let%expect_test "riscv32: a call and an address taken of externs bind to their i
   match laid with
   | Error ds -> show ds
   | Ok laid ->
-      (Printf.printf "imports %s\n" (String.concat " " (Image.plan_of laid).Image.imports);
-       (match Image.bind_image laid ~addresses:[ (".text", 0x800L) ] with
+      (Printf.printf "imports %s\n"
+         (String.concat " " (Rivet_image.plan_of laid).Rivet_image.imports);
+       (match Rivet_image.bind_image laid ~addresses:[ (".text", 0x800L) ] with
        | Ok _ -> print_endline "bound without imports"
        | Error ds -> show ds);
        match
-         Image.bind_image laid
+         Rivet_image.bind_image laid
            ~addresses:[ (".text", 0x800L) ]
            ~imports:[ ("helper", 0x100L); ("table", 0x20010L) ]
        with
        | Error ds -> show ds
        | Ok img -> (
-           match img.Image.segments with
+           match img.Rivet_image.segments with
            | s :: _ -> (
-               match P.dump_disasm_diagnostic ~address:s.Image.address s.Image.bytes with
+               match
+                 P.dump_disasm_diagnostic ~address:s.Rivet_image.address s.Rivet_image.bytes
+               with
                | Ok text -> print_string text
                | Error ds -> show ds)
            | [] -> print_endline "(no segments)"));
@@ -1756,19 +1764,19 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
         match P.plan ~entry:"f" l with
         | Error _ -> "plan failed"
         | Ok laid -> (
-            let plan = Image.plan_of laid in
+            let plan = Rivet_image.plan_of laid in
             let addresses =
               List.map
-                (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L))
-                plan.Image.segments
+                (fun (s : Rivet_image.segment_plan) -> (s.Rivet_image.seg_name, 0x1000L))
+                plan.Rivet_image.segments
             in
-            match Image.bind_image laid ~addresses with
+            match Rivet_image.bind_image laid ~addresses with
             | Error _ -> "bind failed"
             | Ok img ->
                 String.concat ""
                   (List.map
-                     (fun (s : Image.segment) -> String.escaped s.Image.bytes)
-                     img.Image.segments)))
+                     (fun (s : Rivet_image.segment) -> String.escaped s.Rivet_image.bytes)
+                     img.Rivet_image.segments)))
   in
   Printf.printf "%b\n" (String.equal (bytes with_cfi) (bytes without));
   [%expect
@@ -2786,7 +2794,7 @@ let%expect_test "x86-32 pads with lea forms, not long nops" =
    made whole-image disassembly fail outright. *)
 
 let pad_round_trip target ~insn ~size ~pad =
-  let (module D : Target_intf.Target.DRIVER) =
+  let (module D : Rivet_target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   (* [pad] bytes of filler, arranged by putting 16 - pad bytes of real
@@ -3075,10 +3083,10 @@ let%expect_test "a dialect that declares no modifier keeps its colons" =
 
    Two inputs into one resolved, fixed-address image, with no object files
    and no external linker - through the real DRIVER entry point, not
-   Image.plan_image called directly. *)
+   Rivet_image.plan_image called directly. *)
 
 let assemble_many target sources =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   let sources = List.map (fun (unit_name, text) -> (unit_name, source text)) sources in
   match D.assemble_many sources () with
   | Ok _ -> print_endline "accepted"
@@ -3185,7 +3193,7 @@ let%expect_test "riscv64: %pcrel_hi/%pcrel_lo resolve a symbol named like a regi
    siphash24.c), but the dispatch is shared by the whole family, so this
    pins srl/sra(w) alongside it. *)
 let show_lowered target text =
-  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver target in
   match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) () with
   | Ok dump -> print_string dump
   | Error ds ->
@@ -3391,7 +3399,7 @@ let%expect_test "aarch64: adr materializes a jump-table base and br dispatches t
    target always is, making the long rung the only safe, and therefore the
    only correct, choice regardless of how close the two inputs end up. *)
 let%expect_test "a branch to a same-section symbol in another input always takes the long rung" =
-  let (module D : Target_intf.Target.DRIVER) = driver "x86_64" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "x86_64" in
   let sources =
     [
       ("a", source "\t.text\n\t.globl entry\nentry:\n\tjmp far\n");
@@ -3407,7 +3415,7 @@ let%expect_test "a branch to a same-section symbol in another input always takes
             (Rivet_foundation.Diagnostic.message d))
         (Rivet_foundation.Diag.diagnostics ds)
   | Ok laid_out -> (
-      match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
+      match Rivet_image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
       | Error ds ->
           List.iter
             (fun d ->
@@ -3416,8 +3424,8 @@ let%expect_test "a branch to a same-section symbol in another input always takes
                 (Rivet_foundation.Diagnostic.message d))
             (Rivet_foundation.Diag.diagnostics ds)
       | Ok img -> (
-          match img.Image.segments with
-          | s :: _ -> Printf.printf "%s\n" (Rivet_foundation.Byte_cursor.to_hex s.Image.bytes)
+          match img.Rivet_image.segments with
+          | s :: _ -> Printf.printf "%s\n" (Rivet_foundation.Byte_cursor.to_hex s.Rivet_image.bytes)
           | [] -> print_endline "(no segments)")));
   [%expect {| e9 00 00 00 00 c3 |}]
 
@@ -3638,7 +3646,7 @@ f:
 	.comm counter, 4, 4
 |}
   in
-  let (module D : Target_intf.Target.DRIVER) = driver "aarch64" in
+  let (module D : Rivet_target_intf.Target.DRIVER) = driver "aarch64" in
   (match D.dump_lowered_ast ~unit_name:"t" ~source:(source source_text) () with
   | Ok dump -> print_string dump
   | Error ds -> print_string (Rivet_foundation.Diag.render ds));
@@ -4443,7 +4451,7 @@ f:
     4000004d  c3                             ret                               [x86_64.ret] |}]
 
 let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
-  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
+  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
   let source =
     Rivet_foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\tmovabsq $5, %rax\n"
   in
@@ -4460,7 +4468,7 @@ let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
    load of whatever followed the instruction. the compiler compares against 64-bit literals that
    way. Every form that can hold a memory operand now carries its fixup. *)
 let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
-  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
+  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
   List.iter
     (fun insn ->
       let text = "\t.text\n\t" ^ insn ^ "\n\t.section .rodata\n.L1:\t.quad 5\n" in

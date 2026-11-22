@@ -13,6 +13,7 @@ let () =
   List.iter
     (fun t ->
       match Driver.Portable.disassemble_records_for t ~address:0L "\x13\x05\x15\x00" with
-      | Ok rs -> List.iter (fun (r : Target_intf.Target.disasm_record) -> print_endline r.text) rs
+      | Ok rs ->
+          List.iter (fun (r : Rivet_target_intf.Target.disasm_record) -> print_endline r.text) rs
       | Error _ -> ())
     [ "x86_64"; "aarch64"; "riscv32" ]

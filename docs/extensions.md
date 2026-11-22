@@ -7,7 +7,7 @@ rules specific to it.
 
 ## Model
 
-`Target_component.t` and `Target_config` are the single authority for legality.
+`Rivet_target_features.Component.t` and `Rivet_target_features.Config` are the single authority for legality.
 A form has an **owner** (the component that lists it, catalogue provenance only)
 and a **predicate** (`Req`: `Feature f`, `All [...]` or `Any [...]`) that must hold
 over the enabled set for the form to be assembled, encoded or decoded. The
@@ -63,7 +63,7 @@ Each item is `+<ext>` or `-<ext>` with the feature names of the table below,
 case-insensitive, optionally followed by a GNU version (`+zba2p0`; the version
 is accepted and ignored, as one version of each extension is modelled). Items
 apply left to right with the same rules as `--features`
-(`Target_config.apply`): requirements are enabled, implications re-closed
+(`Rivet_target_features.Config.apply`): requirements are enabled, implications re-closed
 without re-adding a removed feature, and only the final set is validated, so
 `.option arch, -c, -zcd, +zcmp` is one valid step. A rejected directive leaves
 the set unchanged. `.option push`/`pop` save and restore the set together with
@@ -144,7 +144,7 @@ strings. `of_march "rv32imf_zve32f_zvfbfwma"` gives the XLEN and a spec starting
 from `none`, with `system` and `s` on (GNU as takes their instructions under any
 `-march`). Versions are accepted and ignored, `g` expands to
 `imafd_zicsr_zifencei`, and `zvl<n>b` is returned as `vlen`, since no feature
-models it. Unknown names fail in `Target_config.resolve`; Zaamo and Zalrsc are
+models it. Unknown names fail in `Rivet_target_features.Config.resolve`; Zaamo and Zalrsc are
 unknown because A is one component.
 
 `to_string ~xlen config` writes the resolved set in canonical order with

@@ -11,7 +11,7 @@ module A = Pipeline.Make (Aarch64)
 module R = Pipeline.Make (Riscv32)
 
 let show = function
-  | Ok rs -> List.iter (fun (r : Target_encode.disasm_record) -> print_endline r.text) rs
+  | Ok rs -> List.iter (fun (r : Rivet_target_encode.disasm_record) -> print_endline r.text) rs
   | Error _ -> ()
 
 let () =

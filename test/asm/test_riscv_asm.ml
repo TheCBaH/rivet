@@ -31,9 +31,12 @@ module Check (E : ENC) = struct
   module H = Harness.Make (E)
 
   let state =
-    match Target_config.parse_spec features with
+    match Rivet_target_features.Config.parse_spec features with
     | Ok s ->
-        { (E.initial_state (Result.get_ok (Target_config.resolve E.components s))) with rvc = true }
+        {
+          (E.initial_state (Result.get_ok (Rivet_target_features.Config.resolve E.components s))) with
+          rvc = true;
+        }
     | Error m -> failwith m
 
   let encode insn =
@@ -155,8 +158,10 @@ let%expect_test "the RV32 library: hand-written and row builders read like the t
   (* Compressed rows need .option rvc; Zcmp excludes Zcd, which D brings with C. *)
   let compressed features insn text =
     let state =
-      let spec = Result.get_ok (Target_config.parse_spec features) in
-      let config = Result.get_ok (Target_config.resolve Riscv32_encode.components spec) in
+      let spec = Result.get_ok (Rivet_target_features.Config.parse_spec features) in
+      let config =
+        Result.get_ok (Rivet_target_features.Config.resolve Riscv32_encode.components spec)
+      in
       { (Riscv32_encode.initial_state config) with rvc = true }
     in
     let bytes =

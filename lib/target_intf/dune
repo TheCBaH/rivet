@@ -17,53 +17,52 @@
 ; its modules treats that module as the whole interface and hides the rest.
 
 (library
- (name target_error)
+ (name rivet_target_error)
  (public_name rivet.target_error)
- (modules target_error)
+ (modules rivet_target_error)
  (modes byte native)
  (libraries rivet_foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
-; target_features (modules target_component, target_config) holds the descriptors a family publishes for its separable
+; target_features (modules component, config) holds the descriptors a family publishes for its separable
 ; instruction components (docs/contracts.md). Pure data, like target_error.
 
 (library
- (name target_features)
+ (name rivet_target_features)
  (public_name rivet.target_features)
- (modules target_component target_config)
- (wrapped false)
+ (modules component config)
  (modes byte native)
  (libraries rivet_foundation rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name target_encode)
+ (name rivet_target_encode)
  (public_name rivet.target_encode)
- (modules target_encode)
+ (modules rivet_target_encode)
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
-  target_error
-  target_features)
+  rivet_target_error
+  rivet_target_features)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name target_intf)
+ (name rivet_target_intf)
  (public_name rivet.target_intf)
  (modules target)
  (modes byte native)
  (libraries
   rivet_foundation
-  codec
+  rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  image
-  target_encode
-  target_features)
+  rivet_image
+  rivet_target_encode
+  rivet_target_features)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

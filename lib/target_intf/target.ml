@@ -28,8 +28,8 @@
       shape no interpreter can inspect: the reason a form was chosen lives
       inside OCaml code. §4.9.1 requires the opposite, so alternatives are the
       codec's own [Alt] node, with priority, guard and cost as data. The shared
-      encoder calls [Codec.encode]; [Codec.check] then reports unreachable
-      alternatives and overlapping patterns statically, and [Codec.decode] is
+      encoder calls [Rivet_codec.encode]; [Rivet_codec.check] then reports unreachable
+      alternatives and overlapping patterns statically, and [Rivet_codec.decode] is
       the same tree read backwards, so a target cannot encode and decode
       differently by accident.
 
@@ -62,12 +62,12 @@ type ('state, 'insn, 'error) directive_result =
           detection origin every other target failure does. *)
 
 module type TARGET = sig
-  include Target_encode.ENCODE
+  include Rivet_target_encode.ENCODE
 
   (* {1 Frontend}
 
      The three members that read source text, and the whole of the difference
-     between this signature and {!Target_encode.ENCODE}. A target satisfies
+     between this signature and {!Rivet_target_encode.ENCODE}. A target satisfies
      TARGET by adding them to the encoding half it already has. *)
 
   val lexical_profile : Rivet_asm_syntax.Lexical_profile.t
@@ -80,7 +80,7 @@ module type TARGET = sig
      A second domain, and not an accident of layering. A target fails here for
      reasons that do not exist below source text - an unknown register spelling,
      a slice no operand shape claims - and those failures want to carry the
-     tokens they were reading. {!Target_encode.ENCODE}'s [error] cannot: that
+     tokens they were reading. {!Rivet_target_encode.ENCODE}'s [error] cannot: that
      signature is satisfied by libraries built without a lexer, so naming
      {!Rivet_asm_syntax.Token} in it would drag the whole front end back into them,
      which is precisely the split ENCODE exists to make.
@@ -95,7 +95,7 @@ module type TARGET = sig
   val parse_error_code : parse_error -> string
 
   val parse_error_diagnostic : parse_error -> Diagnostic.t
-  (** the same erasure {!Target_encode.ENCODE.error_diagnostic} performs, for this domain *)
+  (** the same erasure {!Rivet_target_encode.ENCODE.error_diagnostic} performs, for this domain *)
 
   val parse_operands :
     mnemonic:string -> Rivet_asm_syntax.Token.slice list -> (Operand.t list, parse_error) Err.t
@@ -117,7 +117,7 @@ end
    CLI and the internal linker never mention a target-specific type, so no
    existential escapes into them. Defined here rather than in [driver] because
    it is part of the same contract: it says which requests survive erasure. *)
-type disasm_record = Target_encode.disasm_record = {
+type disasm_record = Rivet_target_encode.disasm_record = {
   address : int64;
   bytes : string;
   text : string;
@@ -125,19 +125,19 @@ type disasm_record = Target_encode.disasm_record = {
   refusal : string option;
   alternatives : string list;
 }
-(** one line of a disassembly; see {!Target_encode.disasm_record} *)
+(** one line of a disassembly; see {!Rivet_target_encode.disasm_record} *)
 
-type listing_line = Target_encode.listing_line = {
+type listing_line = Rivet_target_encode.listing_line = {
   record : disasm_record;
   labels : string list;
   targets : (string * int64) list;
 }
-(** one line of a symbol-labelled listing; see {!Target_encode.listing_line} *)
+(** one line of a symbol-labelled listing; see {!Rivet_target_encode.listing_line} *)
 
 type request = {
   entry : string option;
-  features : Target_config.spec option;
-  max_features : Target_config.spec option;
+  features : Rivet_target_features.Config.spec option;
+  max_features : Rivet_target_features.Config.spec option;
   externs : string list;
   exported : string list option;
   max_size : int option;
@@ -164,11 +164,12 @@ module type DRIVER = sig
   val name : string
   val triple : string
 
-  val components : Target_component.t list
+  val components : Rivet_target_features.Component.t list
   (** the separable instruction components this target has, for a caller that wants to list or
       validate feature names; empty when the whole instruction set is the base *)
 
-  val configure : Target_config.spec -> (Target_config.t, string) result
+  val configure :
+    Rivet_target_features.Config.spec -> (Rivet_target_features.Config.t, string) result
   (** resolve a feature spec against {!components}: the observable effective configuration, or the
       reason it is rejected. Every entry point below takes the same spec and resolves it the same
       way, so [configure] is how a caller previews what it will get. *)
@@ -181,13 +182,13 @@ module type DRIVER = sig
 
   val assemble :
     ?entry:string ->
-    ?features:Target_config.spec ->
+    ?features:Rivet_target_features.Config.spec ->
     unit_name:string ->
     source:Span.source ->
     unit ->
-    Image.laid_out Diag.t
+    Rivet_image.laid_out Diag.t
   (** Text in, laid-out image out - laid out but *not bound*: choosing addresses is the host's
-      step and stays outside every target (§9). [Image.bind_image] is what turns the result into
+      step and stays outside every target (§9). [Rivet_image.bind_image] is what turns the result into
       bytes at an address, and it is deliberately not part of this interface, because it is not
       target-specific at all.
 
@@ -200,30 +201,30 @@ module type DRIVER = sig
 
   val assemble_many :
     ?entry:string ->
-    ?features:Target_config.spec ->
+    ?features:Rivet_target_features.Config.spec ->
     (string * Span.source) list ->
     unit ->
-    Image.laid_out Diag.t
+    Rivet_image.laid_out Diag.t
   (** M3's multi-module entry point (docs/design.md §12): every input lowered with its own
-      [unit_name], then handed to [Image.plan_image] as one list, so a cross-input reference
-      resolves through §2's rules rather than each input being planned alone. [Image.laid_out] is
+      [unit_name], then handed to [Rivet_image.plan_image] as one list, so a cross-input reference
+      resolves through §2's rules rather than each input being planned alone. [Rivet_image.laid_out] is
       already architecture-erased, so this needs no existential of its own - each target's own
       ['k] never crosses this boundary, exactly as [assemble] already does not. A parse/simplify/
       lower failure in one input does not stop the others from being checked too: every input's
       diagnostics are collected before this fails, not just the first input's. *)
 
   val assemble_request :
-    request -> unit_name:string -> source:Span.source -> unit -> Image.laid_out Diag.t
+    request -> unit_name:string -> source:Span.source -> unit -> Rivet_image.laid_out Diag.t
   (** [assemble] with every planning option in one {!request}; [assemble ?entry ?features] is
       [assemble_request] over {!default_request}. *)
 
   val assemble_many_request :
-    request -> (string * Span.source) list -> unit -> Image.laid_out Diag.t
+    request -> (string * Span.source) list -> unit -> Rivet_image.laid_out Diag.t
   (** the same for [assemble_many] *)
 
-  val fixup_observations : Image.laid_out -> Image.fixup_observation list
+  val fixup_observations : Rivet_image.laid_out -> Rivet_image.fixup_observation list
   (** The relocation evidence a laid-out module carries, kind erased. Named here even though
-      [Image.fixup_observations] is reachable from the result above, because this interface is the
+      [Rivet_image.fixup_observations] is reachable from the result above, because this interface is the
       statement of which requests survive erasure - and "classify this module's fixups" is one the
       differential oracle makes through nothing else. *)
 
@@ -236,19 +237,31 @@ module type DRIVER = sig
   val dump_source_ast : unit_name:string -> source:Span.source -> string Diag.t
 
   val dump_normalized_ast :
-    ?features:Target_config.spec -> unit_name:string -> source:Span.source -> unit -> string Diag.t
+    ?features:Rivet_target_features.Config.spec ->
+    unit_name:string ->
+    source:Span.source ->
+    unit ->
+    string Diag.t
 
   val dump_lowered_ast :
-    ?features:Target_config.spec -> unit_name:string -> source:Span.source -> unit -> string Diag.t
+    ?features:Rivet_target_features.Config.spec ->
+    unit_name:string ->
+    source:Span.source ->
+    unit ->
+    string Diag.t
 
   val dump_disasm_canonical :
-    ?features:Target_config.spec -> address:int64 -> string -> string Diag.t
+    ?features:Rivet_target_features.Config.spec -> address:int64 -> string -> string Diag.t
   (** exactly re-parseable: feeding this back through the assembler must produce the identical
       image, and a round-trip test does exactly that. Strict: an instruction of a component the
       configuration disables is a decode error, since it would not re-assemble. *)
 
   val dump_disasm_diagnostic :
-    ?features:Target_config.spec -> ?inspect:bool -> address:int64 -> string -> string Diag.t
+    ?features:Rivet_target_features.Config.spec ->
+    ?inspect:bool ->
+    address:int64 ->
+    string ->
+    string Diag.t
   (** address, bytes, spelling and form id in columns. Read by humans and by the differential gate;
       **not** re-parseable, and no test may re-parse it - a format that had to satisfy both
       audiences would satisfy neither. Strict by default; with [~inspect:true] it decodes every
@@ -256,7 +269,7 @@ module type DRIVER = sig
       refuse, so disabled code can be examined without pretending it assembles. *)
 
   val disassemble_records :
-    ?features:Target_config.spec ->
+    ?features:Rivet_target_features.Config.spec ->
     ?inspect:bool ->
     address:int64 ->
     string ->
@@ -265,22 +278,26 @@ module type DRIVER = sig
       the same strictness and [~inspect] behaviour as the diagnostic dump *)
 
   val listing_records :
-    ?features:Target_config.spec ->
+    ?features:Rivet_target_features.Config.spec ->
     ?inspect:bool ->
-    Image.t ->
+    Rivet_image.t ->
     segment:string ->
     listing_line list Diag.t
   (** a bound image's segment disassembled, each record with the symbols defined at its address
       and the symbol (and addend) each of its fixups names *)
 
   val dump_listing :
-    ?features:Target_config.spec -> ?inspect:bool -> Image.t -> segment:string -> string Diag.t
+    ?features:Rivet_target_features.Config.spec ->
+    ?inspect:bool ->
+    Rivet_image.t ->
+    segment:string ->
+    string Diag.t
   (** {!listing_records} for reading: [name:] where a symbol starts, [<sym+0x4>] beside an
       instruction whose fixup names [sym]. Not re-parseable. *)
 
   val dump_codec : unit -> string
 
   val check_codec : unit -> string list
-  (** [Codec.check] rendered. A driver that cannot be asked whether its own encoding tables are
+  (** [Rivet_codec.check] rendered. A driver that cannot be asked whether its own encoding tables are
       consistent is one whose tables are only tested where a fixture happens to look. *)
 end

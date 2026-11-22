@@ -11,7 +11,11 @@
  (name x86_asm)
  (modules x86_asm)
  (modes byte native melange)
- (libraries rivet_foundation rivet_asm_core target_encode x86_family_encode)
+ (libraries
+  rivet_foundation
+  rivet_asm_core
+  rivet_target_encode
+  x86_family_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
@@ -22,7 +26,7 @@
  (libraries
   rivet_foundation
   rivet_asm_core
-  target_encode
+  rivet_target_encode
   x86_family_encode
   x86_32_encode
   x86_asm)
@@ -36,7 +40,7 @@
  (libraries
   rivet_foundation
   rivet_asm_core
-  target_encode
+  rivet_target_encode
   x86_family_encode
   x86_64_encode
   x86_asm)

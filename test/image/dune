@@ -7,7 +7,7 @@
  (name test_image)
  (modules test_image)
  (modes byte native)
- (libraries image rivet_asm_core rivet_foundation rivet_fmt)
+ (libraries rivet_image rivet_asm_core rivet_foundation rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

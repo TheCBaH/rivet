@@ -15,8 +15,8 @@
   rivet_foundation
   rivet_asm_core
   rivet_asm_syntax
-  codec
-  image
+  rivet_codec
+  rivet_image
   driver
   text_pipeline
   arm

@@ -1,5 +1,5 @@
 open Rivet_foundation
-module C = Codec
+module C = Rivet_codec
 
 (* Re-exported: the library's main module hides its siblings otherwise. *)
 module Riscv_ext_m = Riscv_ext_m
@@ -394,11 +394,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     pic : bool;
     relax : bool;
     rvc : bool;
-    option_stack : (bool * bool * bool * Target_config.t) list;
-    config : Target_config.t;
+    option_stack : (bool * bool * bool * Rivet_target_features.Config.t) list;
+    config : Rivet_target_features.Config.t;
   }
 
-  let default_config = Target_config.default components
+  let default_config = Rivet_target_features.Config.default components
 
   let default_state =
     { pic = false; relax = false; rvc = false; option_stack = []; config = default_config }
@@ -407,7 +407,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let state_config s = s.config
 
   type error_kind =
-    [ Target_error.shared
+    [ Rivet_target_error.shared
     | `Wrong_operands of Opcode.t
     | `Rv64_only of Opcode.t
     | `Rv32_only of Opcode.t
@@ -422,10 +422,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | `No_data_relocation of int
     | `Padding_not_word_multiple ]
 
-  type error = error_kind Target_error.t
+  type error = error_kind Rivet_target_error.t
 
   let pp_error_kind ppf : error_kind -> unit = function
-    | #Target_error.shared as e -> Target_error.pp_shared ppf e
+    | #Rivet_target_error.shared as e -> Rivet_target_error.pp_shared ppf e
     | `Wrong_operands op -> Fmt.pf ppf "no %s form takes these operands" (Opcode.name op)
     | `Rv64_only op -> Fmt.pf ppf "%s is available only when XLEN is 64" (Opcode.name op)
     | `Rv32_only op -> Fmt.pf ppf "%s is available only when XLEN is 32" (Opcode.name op)
@@ -453,13 +453,15 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | `Immediate_alignment _ | `Immediate_range _ -> P.name ^ ".fixup"
     | _ -> P.name ^ ".lower"
 
-  let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
-  let error_code e = error_kind_code (Target_error.kind e)
-  let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+  let pp_error ppf e = pp_error_kind ppf (Rivet_target_error.kind e)
+  let error_code e = error_kind_code (Rivet_target_error.kind e)
+
+  let error_diagnostic e =
+    Rivet_target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
 
   let diag ?pos ?origin kind =
     Err.Error.make ?pos ~pp_error
-      (Target_error.make
+      (Rivet_target_error.make
          ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:P.name ())
          kind)
 
@@ -467,7 +469,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
   (* The one place a form's component is checked against the configuration. Every stage that can
      see an opcode goes through it, so a disabled form is refused whichever path reached it. *)
-  let legal_of_mnemonic = Target_component.legal components
+  let legal_of_mnemonic = Rivet_target_features.Component.legal components
 
   (* Each opcode's requirement, looked up once from the components that publish its spelling. *)
   let legal_of_op =
@@ -483,12 +485,17 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     match legal_of_op op with
     | None -> Ok ()
     | Some req -> (
-        match Target_component.Req.unmet (Target_config.enabled state.config) req with
+        match
+          Rivet_target_features.Component.Req.unmet
+            (Rivet_target_features.Config.enabled state.config)
+            req
+        with
         | None -> Ok ()
         | Some unmet ->
             Error
               (diag ~pos:__POS__ ?origin
-                 (`Feature_disabled (Opcode.name op, Fmt.str "%a" Target_component.Req.pp unmet))))
+                 (`Feature_disabled
+                    (Opcode.name op, Fmt.str "%a" Rivet_target_features.Component.Req.pp unmet))))
 
   let required (i : Instruction.t) = legal_of_op i.op
 
@@ -2716,7 +2723,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let vtype_gate state = function
     | Lowered.Fixed { op = Table r as op; word }
       when (Row.equal r Std_row.vsetvli || Row.equal r Std_row.vsetivli)
-           && not (Target_config.enabled state.config "zve64x") -> (
+           && not (Rivet_target_features.Config.enabled state.config "zve64x") -> (
         let name = Opcode.name op in
         let vtype = Int64.to_int (Int64.shift_right_logical word 20) land 0xff in
         let refuse setting =
@@ -3655,7 +3662,7 @@ module Make (P : PROFILE) = Make_with (P) (Standard (P))
 
 module Extensions = struct
   type definition = Riscv_extensions.definition = {
-    components : Target_component.t list;
+    components : Rivet_target_features.Component.t list;
     rows : Riscv_table_row.row array;
   }
 

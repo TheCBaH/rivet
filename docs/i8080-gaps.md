@@ -1,14 +1,14 @@
 # Intel 8080 target: 8-bit gaps in the core
 
 Surveyed before `targets/i8080` was written. The target is in-tree but may use
-only the public contracts (`ENCODE`, `TARGET`, `Codec`, `Lowered_ast`, `Image`
+only the public contracts (`ENCODE`, `TARGET`, `Rivet_codec`, `Lowered_ast`, `Rivet_image`
 and the text pipeline); `scripts/asm-check-layers.sh` enforces it. Each row
 names the smallest change, if any.
 
 | # | Topic | Finding | Smallest change |
 | --- | --- | --- | --- |
-| 1 | 16-bit address space | Addresses are `int64`; `bind_image` has no width limit. A 16-bit fixup is expressible: `Lowered_ast.range` `Unsigned 16`/`Bitpattern 16`, container of 2 bytes, little-endian patching (`Image.patch_container`) is what the 8080 needs. `layout_policy.max_size` is fixed by the pipeline's own policy. | None in the core. The target reports `Abs8`/`Abs16` fixups; the text wrapper rejects an image that leaves the 64 KiB space after binding. |
-| 2 | 8-bit immediates | `Codec.field ~width:8` and `Codec.fits` exist; operand immediates are `Bigint.t`, narrowed in the target. `Bitpattern 8` is exactly the assembler convention `-128..255`. | None. |
+| 1 | 16-bit address space | Addresses are `int64`; `bind_image` has no width limit. A 16-bit fixup is expressible: `Lowered_ast.range` `Unsigned 16`/`Bitpattern 16`, container of 2 bytes, little-endian patching (`Rivet_image.patch_container`) is what the 8080 needs. `layout_policy.max_size` is fixed by the pipeline's own policy. | None in the core. The target reports `Abs8`/`Abs16` fixups; the text wrapper rejects an image that leaves the 64 KiB space after binding. |
+| 2 | 8-bit immediates | `Rivet_codec.field ~width:8` and `Rivet_codec.fits` exist; operand immediates are `Bigint.t`, narrowed in the target. `Bitpattern 8` is exactly the assembler convention `-128..255`. | None. |
 | 3 | Low/high-byte fixups | `Expr` has `Shr` and `And`, and a fixup kind chooses its own `evaluate_fixup`, so `Low8`/`High8` need no core support. Text syntax would need `modifier_syntax` names. | None in the core. `I8080_as` (see `docs/i8080-oracle.md`) evaluates `low`/`high` itself. |
 | 4 | Intel literals | The lexer reads `0x..`/`0b..` (GAS spellings) and decimal. `NNH`, `$`, `'c'` are not lexed. | None for `i8080_text` (`0x` literals only). `I8080_as` has its own lexer for `NNh`, `NNb`, `$NN`, `$` and characters. |
 | 5 | Instruction-shaped pseudo-ops | `db`, `dw` and `org` carry no leading dot, so the lexer yields them as mnemonics, not directives; `handle_directive` never sees them. | Target-level pseudo-instructions (`Db`, `Dw`, `Org`) in the target's own `Instruction`/`Lowered` types. |
@@ -32,6 +32,6 @@ Decisions taken while implementing:
 - `nop_bytes` is an error: the 8080 has no alignment padding, and a zero fill
   would be printed back as `.balign`. `.align` with a gap is refused.
 - `mov` is fourteen disjoint codec forms so that none overlaps `hlt`
-  (`Codec.check` reports no problems).
+  (`Rivet_codec.check` reports no problems).
 - The boundary is enforced by `scripts/asm-check-layers.sh` (planted cases
   `i8080-reaches-target`, `i8080-reaches-driver`).

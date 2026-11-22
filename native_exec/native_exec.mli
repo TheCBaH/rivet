@@ -46,9 +46,9 @@ val bind_host : target:string -> string list -> (string, error) result
 
 type loaded
 
-val load : ?observe:(event -> unit) -> Image.laid_out -> (loaded, error) result
+val load : ?observe:(event -> unit) -> Rivet_image.laid_out -> (loaded, error) result
 (** Maps and binds the image. An image planned for a target other than the host's ISA
-    ([Image.plan.target], see {!host_isa}) is refused with [Foreign_target] before anything is
+    ([Rivet_image.plan.target], see {!host_isa}) is refused with [Foreign_target] before anything is
     mapped. *)
 
 val call : loaded -> io:io -> (int64, error) result
@@ -68,7 +68,7 @@ val run :
   ?read_globals:string list ->
   ?isolate:bool ->
   ?timeout_s:float ->
-  Image.laid_out ->
+  Rivet_image.laid_out ->
   io:io ->
   (outcome, error) result
 (** Loads, calls once and closes. By default the call runs in a forked child ([isolate = true]):

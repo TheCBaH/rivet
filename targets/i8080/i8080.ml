@@ -1,7 +1,7 @@
 (* The Intel 8080 front end: how Intel-syntax source text becomes operands.
 
    {!I8080_encode} is the rest of the target; this file is what
-   {!Target_intf.Target.TARGET} adds to {!Target_encode.ENCODE}: a lexical
+   {!Rivet_target_intf.Target.TARGET} adds to {!Rivet_target_encode.ENCODE}: a lexical
    profile, an operand parser and a directive handler. Comments start with [;],
    registers are bare identifiers (a symbol with a register's name is a
    register), numbers are GAS [0x] or decimal. [db], [dw] and [org] are
@@ -18,7 +18,7 @@ and cannot_parse = {
   reason : Rivet_asm_syntax.Parse_lines.error_kind;
 }
 
-type parse_error = parse_error_kind Target_error.t
+type parse_error = parse_error_kind Rivet_target_error.t
 
 let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Cannot_parse_operand { slice; _ } ->
@@ -27,15 +27,15 @@ let pp_parse_error_kind ppf : parse_error_kind -> unit = function
 let parse_error_kind_code : parse_error_kind -> string = function
   | `Cannot_parse_operand _ -> "i8080.operand"
 
-let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
-let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+let pp_parse_error ppf e = pp_parse_error_kind ppf (Rivet_target_error.kind e)
+let parse_error_code e = parse_error_kind_code (Rivet_target_error.kind e)
 
 let parse_error_diagnostic e =
-  Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+  Rivet_target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
 
 let parse_diag ?pos ?origin kind =
   Err.Error.make ?pos ~pp_error:pp_parse_error
-    (Target_error.make
+    (Rivet_target_error.make
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"i8080" ())
        kind)
 
@@ -77,4 +77,4 @@ let parse_operands ~mnemonic:_ slices =
   in
   go [] slices
 
-let handle_directive ~name:_ ~arguments:_ _ = Target_intf.Target.Unhandled
+let handle_directive ~name:_ ~arguments:_ _ = Rivet_target_intf.Target.Unhandled

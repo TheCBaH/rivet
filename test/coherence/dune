@@ -13,7 +13,7 @@
  (modes byte native)
  (libraries
   driver
-  image
+  rivet_image
   rivet_asm_core
   aarch64
   rivet_foundation
@@ -26,7 +26,12 @@
  (name test_coherence_paths)
  (modules test_coherence_paths)
  (modes byte native)
- (libraries test_coherence rivet_asm_core rivet_foundation image rivet_fmt)
+ (libraries
+  test_coherence
+  rivet_asm_core
+  rivet_foundation
+  rivet_image
+  rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

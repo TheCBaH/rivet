@@ -1,7 +1,7 @@
-(* [Compute.Term]: sharing, local rewrites, widths beyond 30 bits, evaluation and printing over
+(* [Rivet_compute.Term]: sharing, local rewrites, widths beyond 30 bits, evaluation and printing over
    the DAG. *)
 
-module T = Compute.Term
+module T = Rivet_compute.Term
 
 let show t = print_endline (T.to_string t)
 let x8 = T.var ~w:8 "x"
@@ -110,7 +110,7 @@ let%expect_test "width errors" =
   err (fun () -> T.add ~w:9 x8 y8);
   err (fun () -> T.concat ~hi:(T.var ~w:40 "h") ~lo:(T.var ~w:30 "l") ~lo_w:30);
   err (fun () -> T.extract x8 ~hi:8 ~lo:0);
-  err (fun () -> Compute.Concrete.const ~w:31 0);
+  err (fun () -> Rivet_compute.Concrete.const ~w:31 0);
   [%expect
     {|
     Compute.Term: width must be 1..64
@@ -140,7 +140,8 @@ let doubling n =
 
 let reference n ~x ~y =
   let rec go i x =
-    if i = 0 then x else go (i - 1) (Compute.Concrete.logxor (Compute.Concrete.add ~w:16 x x) y)
+    if i = 0 then x
+    else go (i - 1) (Rivet_compute.Concrete.logxor (Rivet_compute.Concrete.add ~w:16 x x) y)
   in
   go n x
 
@@ -172,26 +173,29 @@ let%expect_test "undecided and symbolic addresses as results" =
   let c = T.var ~w:1 "c" in
   let show_stop = function
     | Ok () -> print_endline "ok"
-    | Error (Compute.Undecided t) -> Printf.printf "undecided %s\n" (T.to_string t)
-    | Error (Compute.Symbolic_address t) -> Printf.printf "symbolic address %s\n" (T.to_string t)
+    | Error (Rivet_compute.Undecided t) -> Printf.printf "undecided %s\n" (T.to_string t)
+    | Error (Rivet_compute.Symbolic_address t) ->
+        Printf.printf "symbolic address %s\n" (T.to_string t)
   in
   Printf.printf "%s %s\n"
     (match T.try_decide (T.const ~w:1 1) with Ok b -> string_of_bool b | Error _ -> "stuck")
     (match T.try_decide c with Ok _ -> "decided" | Error t -> "stuck " ^ T.to_string t);
-  show_stop (Compute.try_step (fun () -> ignore (T.decide c)));
-  show_stop (Compute.try_step (fun () -> ignore (T.decide (T.const ~w:1 0))));
-  let m = Compute.Term_memory.empty in
+  show_stop (Rivet_compute.try_step (fun () -> ignore (T.decide c)));
+  show_stop (Rivet_compute.try_step (fun () -> ignore (T.decide (T.const ~w:1 0))));
+  let m = Rivet_compute.Term_memory.empty in
   let a = T.var ~w:16 "a" in
-  show_stop (Compute.try_step (fun () -> ignore (Compute.Term_memory.load8 m a)));
-  (match Compute.Term_memory.try_store8 m (T.const ~w:16 0x10) x8 with
+  show_stop (Rivet_compute.try_step (fun () -> ignore (Rivet_compute.Term_memory.load8 m a)));
+  (match Rivet_compute.Term_memory.try_store8 m (T.const ~w:16 0x10) x8 with
   | Error _ -> print_endline "store failed"
   | Ok m ->
       Printf.printf "%s %s\n"
-        (match Compute.Term_memory.try_load8 m (T.const ~w:16 0x10) with
+        (match Rivet_compute.Term_memory.try_load8 m (T.const ~w:16 0x10) with
         | Ok v -> T.to_string v
         | Error _ -> "load failed")
-        (match Compute.Term_memory.try_load8 m a with Ok _ -> "loaded" | Error t -> T.to_string t));
-  (match Compute.Term_memory.try_store8 m a x8 with
+        (match Rivet_compute.Term_memory.try_load8 m a with
+        | Ok _ -> "loaded"
+        | Error t -> T.to_string t));
+  (match Rivet_compute.Term_memory.try_store8 m a x8 with
   | Ok _ -> print_endline "stored"
   | Error t -> Printf.printf "store at %s refused\n" (T.to_string t));
   [%expect

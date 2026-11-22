@@ -20,7 +20,7 @@
    [decode] inverts it for free. *)
 
 open Rivet_foundation
-module C = Codec
+module C = Rivet_codec
 include X86_types
 module X86_ops = X86_ops
 
@@ -77,7 +77,7 @@ module Lowered = struct
     | Jmp_rel of { target : Rivet_asm_core.Lowered_ast.branch }
     | Jcc_rel of { cc : Cc.t; target : Rivet_asm_core.Lowered_ast.branch }
         (** The two relaxing forms: [eb/e9] and [7x/0f 8x]. Unlike [call] these really do have two
-            rungs, which is the whole reason {!Codec.Relax} exists. *)
+            rungs, which is the whole reason {!Rivet_codec.Relax} exists. *)
     | Short_rel of { op : Short.t; target : Rivet_asm_core.Lowered_ast.branch }
         (** a rel8-only branch ([e2] loop, [e1] loope, [e0] loopne, [e3] jecxz/jrcxz, with
             0x67 where the counter is not the address width): one rung, so an out-of-range
@@ -756,7 +756,7 @@ let const_disp ~name inner =
 
    [Fixup] (unlike [Field]) carries no signedness of its own - decode hands
    back the raw 32-bit pattern reconstructed as an unsigned magnitude, e.g.
-   0xffffffff decodes to 4294967295L, not -1L. [Codec.sign_extend] is the
+   0xffffffff decodes to 4294967295L, not -1L. [Rivet_codec.sign_extend] is the
    same correction {!Field}'s own decode already applies for a signed field
    (codec.ml:535); without it here, a negative disp32 round-trips to the
    correct BYTES (encode truncates to the low 32 bits either way) but
@@ -1159,9 +1159,9 @@ module Make (M : MODE) = struct
   (* [config] is the validated feature set; see the RISC-V family's [target_state] for why it
      lives in the state. No directive changes it - [.arch] is not supported - so it is fixed
      for a unit by the caller's initial state. *)
-  type target_state = { config : Target_config.t }
+  type target_state = { config : Rivet_target_features.Config.t }
 
-  let default_config = Target_config.default components
+  let default_config = Rivet_target_features.Config.default components
   let default_state = { config = default_config }
   let initial_state config = { config }
   let state_config s = s.config
@@ -1195,7 +1195,7 @@ module Make (M : MODE) = struct
 
   (* The encoder's error domain (docs/errors.md). Below source text, so it
      names no token; the front end's operand failures are a separate domain in
-     x86_family.ml, for the reason {!Target_intf.Target.TARGET} gives. Inside
+     x86_family.ml, for the reason {!Rivet_target_intf.Target.TARGET} gives. Inside
      [Make], so x86_32 and x86_64 share one domain the way they share one
      encoder.
 
@@ -1204,7 +1204,7 @@ module Make (M : MODE) = struct
      milestone boundary a fact about English. Each is a constructor now, so a
      caller - or a test asking what this milestone refuses - matches on it. *)
   type error_kind =
-    [ Target_error.shared
+    [ Rivet_target_error.shared
     | `Missing_size_suffix of string
     | `Prefix66_out_of_scope
     | `Operand8_out_of_scope
@@ -1219,7 +1219,7 @@ module Make (M : MODE) = struct
     | `Immediate_destination
     | `Imm_to_mem_only_movb
     | `Mov8_only_movb
-    | `Codec of Codec.error
+    | `Codec of Rivet_codec.error
     | `Decode_no_match
     | `Decode_partial_bytes
     | `Displacement_not_8bit
@@ -1249,10 +1249,10 @@ module Make (M : MODE) = struct
           declared width - the existing check is already exactly the right
           shape for it. *)
 
-  type error = error_kind Target_error.t
+  type error = error_kind Rivet_target_error.t
 
   let pp_error_kind ppf : error_kind -> unit = function
-    | #Target_error.shared as e -> Target_error.pp_shared ppf e
+    | #Rivet_target_error.shared as e -> Rivet_target_error.pp_shared ppf e
     | `Missing_size_suffix m -> Fmt.pf ppf "%s needs an operand-size suffix (b, w, l or q)" m
     | `Prefix66_out_of_scope ->
         Fmt.string ppf "16-bit operands need the 0x66 prefix, which is not in M1 scope"
@@ -1272,7 +1272,7 @@ module Make (M : MODE) = struct
     | `Imm_to_mem_only_movb ->
         Fmt.string ppf "movb $imm,(mem) is the only imm-to-memory mov form in M1"
     | `Mov8_only_movb -> Fmt.string ppf "8-bit mov is only supported as movb $imm,(mem) in M1"
-    | `Codec e -> Codec.pp_error ppf e
+    | `Codec e -> Rivet_codec.pp_error ppf e
     | `Decode_no_match -> Fmt.string ppf "no form matches these bytes"
     | `Decode_partial_bytes -> Fmt.string ppf "a form consumed a non-whole number of bytes"
     | `Displacement_not_8bit -> Fmt.string ppf "displacement does not fit 8 bits"
@@ -1299,7 +1299,7 @@ module Make (M : MODE) = struct
           (Reg.name reg)
 
   (* The phase that detected it, which is what the code has always named. The
-     codec arm delegates: [Codec.code] is [Some] only where that layer is the
+     codec arm delegates: [Rivet_codec.code] is [Some] only where that layer is the
      only one that could have seen the mistake (docs/errors.md §2). *)
   let error_kind_code : error_kind -> string = function
     | `Unknown_instruction _ | `Missing_size_suffix _ | `Prefix66_out_of_scope
@@ -1312,20 +1312,22 @@ module Make (M : MODE) = struct
     | `Mov8_only_movb | `Register_width_mismatch _ | `Shift_count_not_one _ | `Sse_operand_class _
     | `Vex_rm_extended_register _ | `Invalid_index _ ->
         "x86.lower"
-    | `Codec e -> Option.value (Codec.code e) ~default:"x86.encode"
+    | `Codec e -> Option.value (Rivet_codec.code e) ~default:"x86.encode"
     | `Decode_no_match | `Decode_partial_bytes | `Decode_no_normalized -> "x86.decode"
     | `Displacement_not_8bit | `Displacement_not_32bit -> "x86.fixup"
     | `No_data_relocation _ -> "x86.data-fixup"
     | `Negative_padding _ -> "x86.nop"
     | `Feature_disabled _ -> "x86.feature"
 
-  let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
-  let error_code e = error_kind_code (Target_error.kind e)
-  let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+  let pp_error ppf e = pp_error_kind ppf (Rivet_target_error.kind e)
+  let error_code e = error_kind_code (Rivet_target_error.kind e)
+
+  let error_diagnostic e =
+    Rivet_target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
 
   let diag ?pos ?origin kind =
     Err.Error.make ?pos ~pp_error
-      (Target_error.make
+      (Rivet_target_error.make
          ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:M.name ())
          kind)
 
@@ -5194,10 +5196,10 @@ module Make (M : MODE) = struct
      r)] with [r.num = 0] always returns [None] (REX absent), so threading
      {!prefixes_codec} through here changes no byte ever emitted. It is
      threaded anyway, for the same reason {!alu_acc_form} threads it despite
-     x86-32 never setting REX.W: {!Codec.check}'s [pattern] function gives up
+     x86-32 never setting REX.W: {!Rivet_codec.check}'s [pattern] function gives up
      (returns [None], not "all wildcards") on {!prefixes_codec}'s own
      variable-length rex-present-or-absent [Alt], and only an indeterminate
-     pattern is safe here - the opcode field alone has no fixed bits [Codec.check]
+     pattern is safe here - the opcode field alone has no fixed bits [Rivet_codec.check]
      can see (its true fixed low 3 bits, [ext<<3 | 4], live inside the
      [Iso_fun] the checker treats as opaque), so a bare [opcode_codec ** imm]
      pattern would come out as 16 wildcard bits and register a false
@@ -5428,10 +5430,12 @@ module Make (M : MODE) = struct
     (* Every opcode the family lists for a component must be one it describes, and back. *)
     List.iter
       (fun (c, ops) ->
-        let described = List.sort String.compare (Target_component.mnemonics c) in
+        let described = List.sort String.compare (Rivet_target_features.Component.mnemonics c) in
         let listed = List.sort String.compare (List.map Opcode.name ops) in
         if described <> listed then
-          invalid_arg ("x86 component " ^ c.Target_component.feature ^ " and its opcodes disagree"))
+          invalid_arg
+            ("x86 component " ^ c.Rivet_target_features.Component.feature
+           ^ " and its opcodes disagree"))
       component_ops
 
   (* One single-rung ladder per rel8-only branch: relaxation has nowhere longer to go, so a
@@ -5771,7 +5775,7 @@ module Make (M : MODE) = struct
                             { value = sign_extend ~width:32 d; rung = "call-rel32" };
                       }))
                C.(const ~width:8 0xe8L ** le_fixup ~width:32 ~kind:Pcrel32_call "target"));
-          (* The two real ladders, and the reason {!Codec.Relax} exists: GNU
+          (* The two real ladders, and the reason {!Rivet_codec.Relax} exists: GNU
            encodes a nearby branch in two bytes, so an assembler that always
            emitted the near form would be correct and would still fail the
            byte-for-byte gate.
@@ -5893,7 +5897,7 @@ module Make (M : MODE) = struct
          simply never constructs a [Sse_*] value in the first place, because
          its own register list (x86_32_encode.ml) has no xmm entries - the
          same "unreachable via values, not via bit patterns" situation
-         {!Codec.check} does not and need not flag. *)
+         {!Rivet_codec.check} does not and need not flag. *)
       @ [
           sse_binop_alt ~label:"sse-binop-f2" ~priority:24 ~mandatory:0xF2
             ~opcode_codec:sse_binop_f2_codec;
@@ -6172,7 +6176,7 @@ module Make (M : MODE) = struct
     }
 
   (* The codec produces a placement; the expression to evaluate lives in the
-     lowered value, because [Codec] sits below [asm_core] and cannot mention
+     lowered value, because [Rivet_codec] sits below [asm_core] and cannot mention
      [Expr]. Pairing them is by name, which is what a placement's name is for. *)
   (* A memory operand's symbolic displacement, under the name its placement
      carries. Every lowered form that can hold a [Rm.Mem] can hold one, so every
@@ -7224,7 +7228,7 @@ module Make (M : MODE) = struct
           match simplify_hand_written s with
           | Error e as err -> (
               let spellings =
-                match Target_error.kind (Err.Error.kind e) with
+                match Rivet_target_error.kind (Err.Error.kind e) with
                 | `Unknown_instruction _ ->
                     (s.Surface.mnemonic :: att_spelling s.Surface.mnemonic) @ inferred
                 | _ -> [ s.Surface.mnemonic ]
@@ -7756,7 +7760,7 @@ module Make (M : MODE) = struct
     | _ -> None
 
   let gate ?origin state mnemonic = function
-    | Some f when not (Target_config.enabled state.config f) ->
+    | Some f when not (Rivet_target_features.Config.enabled state.config f) ->
         Error (diag ~pos:__POS__ ?origin (`Feature_disabled (mnemonic, f)))
     | _ -> Ok ()
 
@@ -7767,7 +7771,10 @@ module Make (M : MODE) = struct
 
   let feature_gate ?origin state op = gate ?origin state (Opcode.name op) (op_feature op)
   let required_feature (i : Instruction.t) = op_feature i.op
-  let required i = Option.map (fun f -> Target_component.Req.Feature f) (required_feature i)
+
+  let required i =
+    Option.map (fun f -> Rivet_target_features.Component.Req.Feature f) (required_feature i)
+
   let instruction_gate ?origin state (i : Instruction.t) = feature_gate ?origin state i.op
 
   let simplify_instruction state s =

@@ -13,7 +13,7 @@
  (modules i8080_tool i8080_gen)
  (modes native)
  (libraries
-  compute
+  rivet_compute
   i8080_asm
   i8080_corpus
   i8080_encode

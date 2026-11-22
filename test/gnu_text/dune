@@ -9,8 +9,8 @@
  (libraries
   rivet_foundation
   rivet_asm_core
-  image
-  target_intf
+  rivet_image
+  rivet_target_intf
   text_pipeline
   riscv32)
  (enabled_if
@@ -24,8 +24,8 @@
   gnu_text_corpus
   rivet_asm_core
   rivet_foundation
-  target_intf
-  target_features
+  rivet_target_intf
+  rivet_target_features
   text_pipeline
   riscv32
   riscv32_encode

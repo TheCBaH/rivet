@@ -5,7 +5,7 @@
  (files ../../../lib/compute/*.ml))
 
 (library
- (name compute)
+ (name rivet_compute)
  (modes byte native melange)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

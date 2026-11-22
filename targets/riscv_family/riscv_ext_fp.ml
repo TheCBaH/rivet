@@ -3,7 +3,7 @@
    the mnemonic, except for the moves that name the wider format first. Zfbfmin shares Zfhmin's
    half-word loads, stores and moves, which riscv-opcodes lists under Zfhmin only. *)
 
-module Req = Target_component.Req
+module Req = Rivet_target_features.Component.Req
 
 let format_req ~owner mnemonic =
   let suffix =

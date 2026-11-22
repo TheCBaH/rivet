@@ -33,8 +33,8 @@
  (module_systems commonjs)
  (libraries
   rivet_foundation
-  image
-  target_intf
+  rivet_image
+  rivet_target_intf
   driver
   test_dump_inputs
   rivet_asm_core

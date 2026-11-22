@@ -2,7 +2,10 @@
     optionally a vendor's. A composition is validated once, by {!make}, and only a validated one
     reaches the encoder functors. *)
 
-type definition = { components : Target_component.t list; rows : Riscv_table_row.row array }
+type definition = {
+  components : Rivet_target_features.Component.t list;
+  rows : Riscv_table_row.row array;
+}
 (** A vendor's contribution. Its components are added after the standard ones and must be off by
     default; its rows are the only forms they own. *)
 
@@ -12,7 +15,7 @@ module Validated : sig
 
   val xlen : t -> int
 
-  val components : t -> Target_component.t list
+  val components : t -> Rivet_target_features.Component.t list
   (** Standard components, then the vendor's, specialized to the XLEN. *)
 
   val rows : t -> Riscv_table_row.row array

@@ -44,7 +44,7 @@ module C =
 module D = Pipeline.Make (C)   (* or Driver_direct.Pipeline_direct.Make (C) *)
 
 let text =
-  match Target_config.parse_spec "+xfoo" with
+  match Rivet_target_features.Config.parse_spec "+xfoo" with
   | Ok features -> D.dump_disasm_canonical ~features ~address bytes
   | Error m -> failwith m
 ```
@@ -56,9 +56,9 @@ of a disabled vendor component is a decode error, or a record with a
 
 ## Listings
 
-`Image.bind_image` records every symbol's address (`Image.symbols`, locals
+`Rivet_image.bind_image` records every symbol's address (`Rivet_image.symbols`, locals
 included) and, for each fixup naming one symbol, the patched field's address
-and the addend (`Image.references`). `listing_records ?features image
+and the addend (`Rivet_image.references`). `listing_records ?features image
 ~segment` disassembles one segment of the image with the symbols defined at
 each record (`labels`) and the symbols its fixups name (`targets`);
 `dump_listing` renders it:
