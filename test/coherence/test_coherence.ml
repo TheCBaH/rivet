@@ -14,16 +14,16 @@
    These use the *statically selected* target module - [Rivet_driver.Registry.Aarch64]
    is [Rivet_text_pipeline.Pipeline.Make (Aarch64)], not the erased [DRIVER] - so every type below
    is Aarch64's own. That is what makes the cross-target guarantee a compile-time
-   one: [P.lower] takes an [Aarch64.instruction Normalized_ast.module_], so
+   one: [P.lower] takes an [Rivet_aarch64.instruction Normalized_ast.module_], so
 
-     P.lower ~state:Aarch64.default_state some_arm_normalized_ast
+     P.lower ~state:Rivet_aarch64.default_state some_arm_normalized_ast
 
    does not typecheck, and no runtime check is needed or possible. There is
    deliberately no test asserting it, because a test that passed would only mean
    the assertion compiled - the guarantee is that this file compiles at all. *)
 
 module P = Rivet_driver.Registry.Aarch64
-module T = Aarch64
+module T = Rivet_aarch64
 open Rivet_asm_core
 
 let origin = Rivet_foundation.Origin.synthesized ~pass:"direct" ()

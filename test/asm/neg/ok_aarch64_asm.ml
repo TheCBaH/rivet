@@ -1,6 +1,6 @@
 (* requires: rivet.aarch64_asm *)
 let _ =
-  Aarch64_asm.
+  Rivet_aarch64_asm.
     [
       add x1 x2 x3;
       ldr x0 (off sp 16);

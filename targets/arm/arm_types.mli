@@ -1,5 +1,5 @@
 (* The arm (A32) target's instruction types: registers, operands, conditions, opcodes, instructions
-   and lowered forms. The encoder ({!Arm_encode}) builds on them, and so does the per-opcode table
+   and lowered forms. The encoder ({!Rivet_arm_encode}) builds on them, and so does the per-opcode table
    ({!Arm_ops}), which sits between the two. *)
 
 module C = Rivet_codec

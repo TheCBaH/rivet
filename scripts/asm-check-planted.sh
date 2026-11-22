@@ -284,7 +284,7 @@ plant generic-to-target layers reject-either 'depends on target' "
 # The public-contract boundary of the in-tree i8080 target: another target, or
 # the driver that links every target, anywhere in its closure.
 plant i8080-reaches-target layers audit-fail 'i8080 library' "
-  add_library targets/i8080/dune arm"
+  add_library targets/i8080/dune rivet_arm"
 plant i8080-reaches-driver layers audit-fail 'i8080 library' "
   add_library targets/i8080/dune rivet_driver"
 

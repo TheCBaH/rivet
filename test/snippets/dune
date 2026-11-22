@@ -46,8 +46,8 @@
   asm_oracle
   x86_32_encode
   x86_64_encode
-  arm_encode
-  aarch64_encode
+  rivet_arm_encode
+  rivet_aarch64_encode
   riscv32_encode
   riscv64_encode
   rivet_fmt)

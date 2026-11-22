@@ -1,3 +1,3 @@
 (* requires: rivet.aarch64_asm *)
 (* error: `Sp *)
-let _ = Aarch64_asm.(add x0 sp x2)
+let _ = Rivet_aarch64_asm.(add x0 sp x2)

@@ -4,11 +4,11 @@
    label or symbol expression where the shape also takes a number, [_l] a literal label, [_z]
    zero. Every builder of an instruction with a condition takes [?cond]; a flag-setting form is an
    opcode of its own ([adds]). Immediates are [int] ([int64] for a modified immediate); lowering
-   still checks ranges. Core registers are {!Arm_encode.Reg.t}, double-precision ones
-   {!Arm_encode.Dreg.t} and single-precision ones {!Arm_encode.Sreg.t}, so a [d] register where an
+   still checks ranges. Core registers are {!Rivet_arm_encode.Reg.t}, double-precision ones
+   {!Rivet_arm_encode.Dreg.t} and single-precision ones {!Rivet_arm_encode.Sreg.t}, so a [d] register where an
    [s] one is expected does not compile. *)
 
-open Arm_encode
+open Rivet_arm_encode
 module Cond = Cond
 module Reg = Reg
 module Dreg = Dreg

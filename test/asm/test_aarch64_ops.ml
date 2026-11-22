@@ -2,9 +2,9 @@
    takes; the encoder reads its encoding fields from the table, and the pinned constants below
    hold them to what they were. *)
 
-open Aarch64_encode
-module Ops = Aarch64_encode.Aarch64_ops
-module H = Harness.Make (Aarch64_encode)
+open Rivet_aarch64_encode
+module Ops = Rivet_aarch64_encode.Aarch64_ops
+module H = Harness.Make (Rivet_aarch64_encode)
 
 (* Every constructor, so a missing table entry is a compile error here rather than a gap. *)
 let constructors =

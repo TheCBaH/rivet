@@ -9,8 +9,8 @@
  (files ../../../targets/aarch64/*.mli))
 
 (library
- (name aarch64_encode)
- (modules aarch64_encode aarch64_types aarch64_ops)
+ (name rivet_aarch64_encode)
+ (modules rivet_aarch64_encode aarch64_types aarch64_ops)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -22,8 +22,8 @@
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name aarch64)
- (modules aarch64)
+ (name rivet_aarch64)
+ (modules rivet_aarch64)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -31,6 +31,6 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  aarch64_encode)
+  rivet_aarch64_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

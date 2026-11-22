@@ -28,10 +28,10 @@
   riscv32_asm
   riscv64_asm
   rivet_foundation
-  arm_encode
-  arm_asm
-  aarch64_encode
-  aarch64_asm
+  rivet_arm_encode
+  rivet_arm_asm
+  rivet_aarch64_encode
+  rivet_aarch64_asm
   x86_family_encode
   x86_32_encode
   x86_64_encode

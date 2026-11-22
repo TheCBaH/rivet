@@ -6,7 +6,7 @@ let print instruction type_char =
        ~instruction
        { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
-module A = Rivet_driver_direct.Pipeline_direct.Make (Aarch64_encode)
+module A = Rivet_driver_direct.Pipeline_direct.Make (Rivet_aarch64_encode)
 module R = Rivet_driver_direct.Pipeline_direct.Make (Riscv32_encode)
 
 let show = function
@@ -14,7 +14,7 @@ let show = function
   | Error _ -> ()
 
 let () =
-  print Aarch64_encode.Instruction.pp_gnu '%';
+  print Rivet_aarch64_encode.Instruction.pp_gnu '%';
   print Riscv32_encode.Instruction.pp_gnu '@';
   let b = "\x13\x05\x15\x00" in
   show (A.disassemble_records ~address:0L b);

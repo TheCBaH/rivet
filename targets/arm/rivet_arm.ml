@@ -1,6 +1,6 @@
 (* The ARM front end: how A32 source text becomes operands.
 
-   {!Arm_encode} is the rest of the target - the instruction types and
+   {!Rivet_arm_encode} is the rest of the target - the instruction types and
    everything that turns one into bytes - and this file is what {!Target.TARGET}
    adds on top of {!Rivet_target_encode.ENCODE}: a lexical profile, an operand parser,
    and a directive handler. The two are separate libraries so that a consumer
@@ -9,11 +9,11 @@
 
    [include] rather than functor application: this module *is* the arm target,
    so its type identities have to be the encoder's own. Everything
-   {!Arm_encode} exports is re-exported here, which is also what lets the parser
+   {!Rivet_arm_encode} exports is re-exported here, which is also what lets the parser
    below use [diag], [shift_of_name], [Reg] and the rest without qualification. *)
 
 open Rivet_foundation
-include Arm_encode
+include Rivet_arm_encode
 
 (* The front end's error domain (docs/errors.md). Separate from the
    encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
@@ -467,7 +467,7 @@ let handle_directive ~name ~arguments state =
   match name with
   | ".syntax" -> (
       let argument = String.concat ", " arguments in
-      match Arm_encode.Syntax.of_name (String.trim argument) with
+      match Rivet_arm_encode.Syntax.of_name (String.trim argument) with
       | Some syntax -> Rivet_target_intf.Target.Handled { state = { state with syntax }; emit = [] }
       | None ->
           Rivet_target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_syntax argument)))

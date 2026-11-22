@@ -10,7 +10,7 @@
   native_exec
   rivet_driver
   rivet_driver_direct
-  aarch64_encode
+  rivet_aarch64_encode
   x86_64_encode
   rivet_target_intf
   rivet_foundation

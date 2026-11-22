@@ -47,7 +47,7 @@ module Shape : sig
 
   val kinds : ('f, 'r) t -> Kind.t list
   val int : int -> Arm_types.Operand.t
-  val mem0 : Arm_encode__Arm_types.Reg.t -> Arm_types.Operand.t
+  val mem0 : Rivet_arm_encode__Arm_types.Reg.t -> Arm_types.Operand.t
   val numbers : Arm_types.Reg.t list -> int list
   val dnumbers : Arm_types.Dreg.t list -> int list
   val build : ('f, 'r) t -> (Arm_types.Operand.t list -> 'r) -> 'f
@@ -114,12 +114,13 @@ type entry = {
 val registry : entry list ref
 
 val builder :
-  Arm_encode__Arm_types.Opcode.t ->
+  Rivet_arm_encode__Arm_types.Opcode.t ->
   ('a, Arm_types.Instruction.t) Shape.t ->
   ?cond:Arm_types.Cond.t ->
   'a
 
-val shape_of : Arm_encode__Arm_types.Opcode.t -> ('a, Arm_types.Instruction.t) Shape.t -> shape
+val shape_of :
+  Rivet_arm_encode__Arm_types.Opcode.t -> ('a, Arm_types.Instruction.t) Shape.t -> shape
 
 val def :
   ?group:group ->
@@ -770,7 +771,7 @@ val x_bits : int -> int64 * int64 * int64
 val x_kind_of_bits : int64 * int64 * int64 -> int option
 val rd_rm : Arm_types.Opcode.t -> (int64 * int64) option
 val v3_selector : Arm_types.V3.op -> int64 * int64 * int64 * int64
-val v3_of_selector : int64 * int64 * int64 * int64 -> Arm_encode__Arm_types.V3.op option
+val v3_of_selector : int64 * int64 * int64 * int64 -> Rivet_arm_encode__Arm_types.V3.op option
 val v3_name : Arm_types.V3.op -> string
 val requirement : Arm_types.Opcode.t -> Rivet_target_features.Component.Req.t option
 val of_enc : Enc.t -> Arm_types.Opcode.t option

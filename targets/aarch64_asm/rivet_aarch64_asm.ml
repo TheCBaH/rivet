@@ -8,7 +8,7 @@
    arrangement is shared by its operands. Immediates are [int] ([int64] for a bitmask or a 64-bit
    constant); lowering still checks ranges and alignment. *)
 
-open Aarch64_encode
+open Rivet_aarch64_encode
 module Cond = Cond
 module Extend = Extend
 module Xreg = Xreg

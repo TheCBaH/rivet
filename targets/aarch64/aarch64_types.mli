@@ -1,5 +1,5 @@
 (* The aarch64 (A64) target's instruction types: registers, operands, conditions, opcodes and
-   instructions. The encoder ({!Aarch64_encode}) builds on them, and so does the per-opcode table
+   instructions. The encoder ({!Rivet_aarch64_encode}) builds on them, and so does the per-opcode table
    ({!Aarch64_ops}), which sits between the two. *)
 
 module Reg : sig

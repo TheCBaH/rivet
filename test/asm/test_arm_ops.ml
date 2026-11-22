@@ -1,8 +1,8 @@
 (* Arm_ops agrees with the encoder on every opcode: spelling, encoding fields, flag effects and
    the operand lists lowering takes. *)
 
-open Arm_encode
-module Ops = Arm_encode.Arm_ops
+open Rivet_arm_encode
+module Ops = Rivet_arm_encode.Arm_ops
 
 (* Every constructor, so a missing table entry is a compile error here rather than a gap. *)
 let constructors =

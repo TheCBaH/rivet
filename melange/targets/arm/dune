@@ -9,8 +9,8 @@
  (files ../../../targets/arm/*.mli))
 
 (library
- (name arm_encode)
- (modules arm_encode arm_types arm_ops)
+ (name rivet_arm_encode)
+ (modules rivet_arm_encode arm_types arm_ops)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -22,8 +22,8 @@
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name arm)
- (modules arm)
+ (name rivet_arm)
+ (modules rivet_arm)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -31,6 +31,6 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  arm_encode)
+  rivet_arm_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

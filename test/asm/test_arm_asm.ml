@@ -2,9 +2,9 @@
    encodes like the text it stands for; a flag-setting form differs from its plain form in the S
    bit alone; and the bytes read back as text that assembles to them again. *)
 
-open Arm_asm
-module Ops = Arm_encode.Arm_ops
-module H = Harness.Make (Arm_encode)
+open Rivet_arm_asm
+module Ops = Rivet_arm_encode.Arm_ops
+module H = Harness.Make (Rivet_arm_encode)
 
 let%expect_test "builders read like their text" =
   let c = H.check in
@@ -115,8 +115,8 @@ let operand_text imm i (k : Ops.Kind.t) =
   | Wb -> Printf.sprintf "r%d!" (1 + i)
 
 (* The mnemonic with a condition: before a VFP type suffix, after anything else. *)
-let with_cond name (cond : Arm_encode.Cond.t) =
-  let c = Arm_encode.Cond.suffix cond in
+let with_cond name (cond : Rivet_arm_encode.Cond.t) =
+  let c = Rivet_arm_encode.Cond.suffix cond in
   match String.index_opt name '.' with
   | Some d -> String.sub name 0 d ^ c ^ String.sub name d (String.length name - d)
   | None -> name ^ c
@@ -159,7 +159,9 @@ let%expect_test "every builder encodes like its text under every condition" =
   let bad = ref [] and n = ref 0 in
   List.iter
     (fun ((e : Ops.entry), (s : Ops.shape)) ->
-      let conds = if e.Ops.conditional then Arm_encode.Cond.all else [ Arm_encode.Cond.Al ] in
+      let conds =
+        if e.Ops.conditional then Rivet_arm_encode.Cond.all else [ Rivet_arm_encode.Cond.Al ]
+      in
       List.iter
         (fun cond ->
           incr n;
@@ -181,9 +183,9 @@ let%expect_test "every builder encodes like its text under every condition" =
 
 let%expect_test "a flag-setting form differs from its plain form in the S bit alone" =
   let pairs =
-    Arm_encode.Opcode.
+    Rivet_arm_encode.Opcode.
       [ (Add, Adds); (Sub, Subs); (Orr, Orrs); (Adc, Adcs); (Sbc, Sbcs); (Rsb, Rsbs); (Rrx, Rrxs) ]
-    @ List.init 4 (fun k -> (Arm_encode.Opcode.Shift k, Arm_encode.Opcode.Shifts k))
+    @ List.init 4 (fun k -> (Rivet_arm_encode.Opcode.Shift k, Rivet_arm_encode.Opcode.Shifts k))
   in
   let bad = ref [] and n = ref 0 in
   List.iter

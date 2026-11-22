@@ -1,9 +1,9 @@
 (* The AArch64 builders: examples read like their text; every builder's sample encodes like the
    text it stands for; and the bytes read back as text that assembles to them again. *)
 
-open Aarch64_asm
-module Ops = Aarch64_encode.Aarch64_ops
-module H = Harness.Make (Aarch64_encode)
+open Rivet_aarch64_asm
+module Ops = Rivet_aarch64_encode.Aarch64_ops
+module H = Harness.Make (Rivet_aarch64_encode)
 
 let%expect_test "builders read like their text" =
   let c = H.check in
@@ -157,15 +157,16 @@ let%expect_test "a list of builders reads like the lines it stands for" =
 (* The text of an instruction, with its label where the unbound encoding leaves zero: on the
    instruction itself. *)
 let text insn =
-  let t = Format.asprintf "%a" Aarch64_encode.Instruction.pp_gnu insn in
+  let t = Format.asprintf "%a" Rivet_aarch64_encode.Instruction.pp_gnu insn in
   let has_sym =
     List.exists
       (function
-        | Aarch64_encode.Operand.Sym _ -> true
-        | Aarch64_encode.Operand.Mem { Aarch64_encode.Mem.offset = Aarch64_encode.Disp.Sym _; _ } ->
+        | Rivet_aarch64_encode.Operand.Sym _ -> true
+        | Rivet_aarch64_encode.Operand.Mem
+            { Rivet_aarch64_encode.Mem.offset = Rivet_aarch64_encode.Disp.Sym _; _ } ->
             true
         | _ -> false)
-      insn.Aarch64_encode.Instruction.ops
+      insn.Rivet_aarch64_encode.Instruction.ops
   in
   if has_sym then "l:\n\t" ^ t else t
 

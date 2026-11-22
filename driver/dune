@@ -13,8 +13,8 @@
   rivet_target_intf
   x86_32
   x86_64
-  arm
-  aarch64
+  rivet_arm
+  rivet_aarch64
   riscv32
   riscv64
   rivet_fmt)

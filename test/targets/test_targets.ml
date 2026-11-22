@@ -198,10 +198,10 @@ addi x0, x0, 0
    plan pins. *)
 
 let%expect_test "the modified-immediate relation round-trips exhaustively" =
-  let dom = Arm.modimm_domain in
+  let dom = Rivet_arm.modimm_domain in
   Printf.printf "%s\n" (Fmt.to_to_string Rivet_codec.Finite.pp_domain dom);
   let failures =
-    Rivet_codec.Finite.round_trip Arm.modimm_codec dom ~equal:Int64.equal
+    Rivet_codec.Finite.round_trip Rivet_arm.modimm_codec dom ~equal:Int64.equal
       ~show:(Printf.sprintf "0x%Lx")
   in
   show_list "round-trip failures" failures;
@@ -220,12 +220,12 @@ let%expect_test "canonical modified-immediate selection matches GNU as" =
   let representations v =
     List.length
       (List.filter
-         (fun rot -> Int64.compare (Arm.rotl32 v (2 * rot)) 256L < 0)
+         (fun rot -> Int64.compare (Rivet_arm.rotl32 v (2 * rot)) 256L < 0)
          (List.init 16 (fun r -> r)))
   in
   List.iter
     (fun v ->
-      match Arm.encode_modimm v with
+      match Rivet_arm.encode_modimm v with
       | Some (rot, imm8) ->
           Printf.printf "0x%-10Lx %d representations, chose rot=%d imm8=0x%02x\n" v
             (representations v) rot imm8
@@ -254,10 +254,10 @@ let%expect_test "the scaled-offset relations round-trip over their declared doma
     show_list "  failures"
       (Rivet_codec.Finite.round_trip codec dom ~equal:Int64.equal ~show:(Printf.sprintf "%Ld"))
   in
-  check Aarch64.uoff12_domain
-    (Aarch64.scaled ~shift:3 ~width:12 ~signedness:Rivet_codec.Unsigned "imm12");
-  check Aarch64.stp_imm7_domain
-    (Aarch64.scaled ~shift:3 ~width:7 ~signedness:Rivet_codec.Signed "imm7");
+  check Rivet_aarch64.uoff12_domain
+    (Rivet_aarch64.scaled ~shift:3 ~width:12 ~signedness:Rivet_codec.Unsigned "imm12");
+  check Rivet_aarch64.stp_imm7_domain
+    (Rivet_aarch64.scaled ~shift:3 ~width:7 ~signedness:Rivet_codec.Signed "imm7");
   [%expect
     {|
     aarch64.ldr-uoff12: 5 values, deterministic sample
@@ -277,11 +277,12 @@ let%expect_test "the scaled-offset relations round-trip over their declared doma
 let%expect_test "the bitmask-immediate relations round-trip exhaustively" =
   List.iter
     (fun datasize ->
-      let dom = Aarch64.bitmask_domain ~datasize in
+      let dom = Rivet_aarch64.bitmask_domain ~datasize in
       Printf.printf "%s\n" (Fmt.to_to_string Rivet_codec.Finite.pp_domain dom);
       show_list "  failures"
-        (Rivet_codec.Finite.round_trip (Aarch64.bitmask_codec ~datasize) dom ~equal:Int64.equal
-           ~show:(Printf.sprintf "0x%Lx")))
+        (Rivet_codec.Finite.round_trip
+           (Rivet_aarch64.bitmask_codec ~datasize)
+           dom ~equal:Int64.equal ~show:(Printf.sprintf "0x%Lx")))
     [ 32; 64 ];
   [%expect
     {|
@@ -298,7 +299,7 @@ let%expect_test "the bitmask-immediate relations round-trip exhaustively" =
 let%expect_test "which small constants are bitmask immediates" =
   List.iter
     (fun v ->
-      match Aarch64.encode_bitmask ~datasize:32 v with
+      match Rivet_aarch64.encode_bitmask ~datasize:32 v with
       | Some (n, immr, imms) -> Printf.printf "%Ld  n=%d immr=%d imms=%d\n" v n immr imms
       | None -> Printf.printf "%Ld  not expressible\n" v)
     (* 0 and all-ones are the two the architecture reserves: a run of ones as
@@ -1370,11 +1371,13 @@ let show_arm_fixup label result =
   match result with
   | Ok value -> Printf.printf "%-12s %Ld\n" label value
   | Error error ->
-      let diagnostic = Arm_encode.error_diagnostic (Err.Error.kind error) in
+      let diagnostic = Rivet_arm_encode.error_diagnostic (Err.Error.kind error) in
       Printf.printf "%-12s %s\n" label (Rivet_foundation.Diagnostic.message diagnostic)
 
 let%expect_test "vldr literal-pool fixup: forward-only, word-aligned, +/-1020 reach" =
-  let vldr8 target = Arm_encode.evaluate_fixup Arm_encode.Pcrel_vldr8 ~place:8L ~target in
+  let vldr8 target =
+    Rivet_arm_encode.evaluate_fixup Rivet_arm_encode.Pcrel_vldr8 ~place:8L ~target
+  in
   List.iter
     (fun (label, target) -> show_arm_fixup label (vldr8 target))
     [ ("min", 8L); ("max", 1028L); ("above max", 1032L); ("backward", 4L); ("misaligned", 9L) ];
@@ -4748,11 +4751,13 @@ f:
 let%expect_test "a constructed module prints as GNU assembler source" =
   let open Rivet_asm_core in
   let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
-  let x n = { Aarch64.Reg.num = n; width = 64; is_sp = false } in
-  let i op ops = Normalized_ast.Instruction { insn = { Aarch64.Instruction.op; ops }; origin } in
+  let x n = { Rivet_aarch64.Reg.num = n; width = 64; is_sp = false } in
+  let i op ops =
+    Normalized_ast.Instruction { insn = { Rivet_aarch64.Instruction.op; ops }; origin }
+  in
   let d directive = Normalized_ast.Directive { directive; origin } in
-  let sym s = Aarch64.Operand.Sym (Expr.Symbol s) in
-  let reg n = Aarch64.Operand.Reg (x n) in
+  let sym s = Rivet_aarch64.Operand.Sym (Expr.Symbol s) in
+  let reg n = Rivet_aarch64.Operand.Reg (x n) in
   let m =
     {
       Normalized_ast.unit_name = "m";
@@ -4763,39 +4768,39 @@ let%expect_test "a constructed module prints as GNU assembler source" =
           d (Directive.Global { name = "f" });
           d (Directive.Sym_type { name = "f"; kind = Directive.Function });
           Normalized_ast.Label { name = "f"; origin };
-          i Aarch64.Opcode.Adrp
+          i Rivet_aarch64.Opcode.Adrp
             [
               reg 1;
               ( sym "g" |> fun _ ->
-                Aarch64.Operand.Sym
+                Rivet_aarch64.Operand.Sym
                   (Expr.Binary
                      (Expr.Add, Expr.Symbol "g", Expr.Const (Rivet_foundation.Bigint.of_int 8))) );
             ];
-          i Aarch64.Opcode.Add
+          i Rivet_aarch64.Opcode.Add
             [
               reg 1;
               reg 1;
-              Aarch64.Operand.Sym
+              Rivet_aarch64.Operand.Sym
                 (Expr.Modifier
                    ( "lo12",
                      Expr.Binary
                        (Expr.Add, Expr.Symbol "g", Expr.Const (Rivet_foundation.Bigint.of_int 8)) ));
             ];
-          i Aarch64.Opcode.Ldr
+          i Rivet_aarch64.Opcode.Ldr
             [
               reg 2;
-              Aarch64.Operand.Mem
+              Rivet_aarch64.Operand.Mem
                 {
-                  Aarch64.Mem.base = x 1;
-                  offset = Aarch64.Disp.Sym (Expr.Modifier ("lo12", Expr.Symbol "g"));
+                  Rivet_aarch64.Mem.base = x 1;
+                  offset = Rivet_aarch64.Disp.Sym (Expr.Modifier ("lo12", Expr.Symbol "g"));
                   writeback = false;
                   pre = true;
                 };
             ];
-          i (Aarch64.Opcode.Bcond Aarch64.Cond.Ne) [ sym "f" ];
-          i Aarch64.Opcode.Cbz [ reg 2; sym "f" ];
-          i Aarch64.Opcode.Bl [ sym "f" ];
-          i Aarch64.Opcode.Ret [];
+          i (Rivet_aarch64.Opcode.Bcond Rivet_aarch64.Cond.Ne) [ sym "f" ];
+          i Rivet_aarch64.Opcode.Cbz [ reg 2; sym "f" ];
+          i Rivet_aarch64.Opcode.Bl [ sym "f" ];
+          i Rivet_aarch64.Opcode.Ret [];
           d
             (Directive.Sym_size
                { name = "f"; size = Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "f") });
@@ -4822,7 +4827,8 @@ let%expect_test "a constructed module prints as GNU assembler source" =
     }
   in
   print_string
-    (Gnu_module.to_string { Gnu_module.type_char = '%' } ~instruction:Aarch64.Instruction.pp_gnu m);
+    (Gnu_module.to_string { Gnu_module.type_char = '%' }
+       ~instruction:Rivet_aarch64.Instruction.pp_gnu m);
   [%expect
     {|
     	.section	.text,"ax",%progbits

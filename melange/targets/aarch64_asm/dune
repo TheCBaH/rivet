@@ -8,9 +8,9 @@
  (files ../../../targets/aarch64_asm/*.mli))
 
 (library
- (name aarch64_asm)
- (modules aarch64_asm)
+ (name rivet_aarch64_asm)
+ (modules rivet_aarch64_asm)
  (modes byte native melange)
- (libraries rivet_foundation rivet_asm_core aarch64_encode)
+ (libraries rivet_foundation rivet_asm_core rivet_aarch64_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

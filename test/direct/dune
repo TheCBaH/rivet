@@ -10,10 +10,10 @@
   rivet_asm_core
   rivet_image
   rivet_driver_direct
-  aarch64_encode
+  rivet_aarch64_encode
   fmt)
  (forbidden_libraries
   rivet_asm_syntax
   rivet_driver
   rivet_target_intf
-  aarch64))
+  rivet_aarch64))

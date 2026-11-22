@@ -24,8 +24,8 @@
   rivet_target_intf
   rivet_codec
   rivet_foundation
-  arm
-  aarch64
+  rivet_arm
+  rivet_aarch64
   x86_32
   x86_64
   riscv32_encode

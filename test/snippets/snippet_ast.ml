@@ -240,8 +240,8 @@ let reg_exn ~target find n =
 (* {1 aarch64} *)
 
 module Aarch64_corpus = struct
-  module T = Aarch64_encode
-  module A = Make (Aarch64_encode)
+  module T = Rivet_aarch64_encode
+  module A = Make (Rivet_aarch64_encode)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
@@ -331,8 +331,8 @@ end
 (* {1 arm} *)
 
 module Arm_corpus = struct
-  module T = Arm_encode
-  module A = Make (Arm_encode)
+  module T = Rivet_arm_encode
+  module A = Make (Rivet_arm_encode)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops

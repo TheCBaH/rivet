@@ -151,7 +151,7 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
         | Error m, _ | _, Error m -> print_endline m)
   in
   let module X = Rivet_text_pipeline.Pipeline.Make (X86_64) in
-  let module A = Rivet_text_pipeline.Pipeline.Make (Aarch64) in
+  let module A = Rivet_text_pipeline.Pipeline.Make (Rivet_aarch64) in
   let simplify_with parse simplify state src =
     match parse ~unit_name:"l" ~source:src with
     | Error ds -> Error (C.render ds)
@@ -174,8 +174,9 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
   check
     (module A)
     ~type_char:'%'
-    ~simplify:(simplify_with A.parse (fun ~state m -> A.simplify ~state m) Aarch64.default_state)
-    ~instruction:Aarch64.Instruction.pp_gnu
+    ~simplify:
+      (simplify_with A.parse (fun ~state m -> A.simplify ~state m) Rivet_aarch64.default_state)
+    ~instruction:Rivet_aarch64.Instruction.pp_gnu
     {|
       .text
     1:

@@ -1,6 +1,6 @@
 (* requires: rivet.arm_asm *)
 let _ =
-  Arm_asm.
+  Rivet_arm_asm.
     [
       add r0 r1 r2;
       adds ~cond:Cond.Ne r0 r1 r2;

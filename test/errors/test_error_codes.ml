@@ -137,7 +137,7 @@ let () =
       `Negative_padding 0;
     ];
   record "x86 parse" X86_64.parse_error_kind_code [ `Unknown_register "r" ];
-  record "arm encode" Arm.error_kind_code
+  record "arm encode" Rivet_arm.error_kind_code
     [
       `Unknown_instruction "m";
       `Thumb_out_of_scope;
@@ -147,9 +147,9 @@ let () =
       `No_data_relocation 4;
       `Padding_not_word_multiple;
     ];
-  record "arm parse" Arm.parse_error_kind_code
+  record "arm parse" Rivet_arm.parse_error_kind_code
     [ `Unknown_register "r"; `Thumb_directive_out_of_scope ];
-  record "aarch64 encode" Aarch64.error_kind_code
+  record "aarch64 encode" Rivet_aarch64.error_kind_code
     [
       `Unknown_instruction "m";
       `Too_many_operands;
@@ -159,7 +159,7 @@ let () =
       `No_data_relocation 4;
       `Padding_not_word_multiple;
     ];
-  record "aarch64 parse" Aarch64.parse_error_kind_code [ `Unknown_register "r" ]
+  record "aarch64 parse" Rivet_aarch64.parse_error_kind_code [ `Unknown_register "r" ]
 
 (* {1 driver}
 

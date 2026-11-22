@@ -15,7 +15,7 @@
   rivet_driver
   rivet_image
   rivet_asm_core
-  aarch64
+  rivet_aarch64
   rivet_foundation
   test_dump_inputs
   rivet_fmt)

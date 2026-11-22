@@ -1,6 +1,6 @@
 (* The AArch64 front end: how A64 source text becomes operands.
 
-   {!Aarch64_encode} is the rest of the target - the instruction types and
+   {!Rivet_aarch64_encode} is the rest of the target - the instruction types and
    everything that turns one into bytes - and this file is what {!Target.TARGET}
    adds on top of {!Rivet_target_encode.ENCODE}: a lexical profile, an operand parser,
    and a directive handler. The two are separate libraries so that a consumer
@@ -9,11 +9,11 @@
 
    [include] rather than functor application: this module *is* the aarch64
    target, so its type identities have to be the encoder's own. Everything
-   {!Aarch64_encode} exports is re-exported here, which is also what lets the
+   {!Rivet_aarch64_encode} exports is re-exported here, which is also what lets the
    parser below use [diag], [Reg], [Operand] and the rest without qualification. *)
 
 open Rivet_foundation
-include Aarch64_encode
+include Rivet_aarch64_encode
 
 (* The front end's error domain (docs/errors.md). Separate from the
    encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
@@ -282,7 +282,7 @@ let parse_one (slice : Rivet_asm_syntax.Token.slice) =
      [ldrb w2, [x22, w5, uxtw]], [ldr x2, [x20, x1]]. Three shapes: index
      alone (bare [lsl], unscaled - the same encoding real [as] gives
      [[x20, x1, lsl #0]]... except unscaled, since no [#0] was written -
-     verified byte-for-byte, see [Aarch64_encode.Disp.Reg]'s comment), index
+     verified byte-for-byte, see [Rivet_aarch64_encode.Disp.Reg]'s comment), index
      plus an extend keyword with no [#amount] (S=0), and index plus extend
      plus an explicit [#amount] (S=1). The extend keyword itself is not
      validated here - [lower_instruction] rejects an unknown one with the
@@ -318,7 +318,7 @@ let parse_one (slice : Rivet_asm_syntax.Token.slice) =
      register form - extended register, e.g. [add x0, x0, x16, uxtx #0]
      (M5 corpus evidence: test/regression/int64.c, the corpus notes).
      Both spell as [<keyword> #<amount>] at this token shape, so one operand
-     type ([Operand.Shift]) carries either; {!Aarch64_encode.lower_instruction}
+     type ([Operand.Shift]) carries either; {!Rivet_aarch64_encode.lower_instruction}
      is what tells them apart, by which table ([shift_code] vs. the
      extended-register option table) recognizes [kind]. *)
   | [

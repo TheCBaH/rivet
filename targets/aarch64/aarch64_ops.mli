@@ -205,7 +205,7 @@ type entry = {
 }
 
 val registry : entry list ref
-val variants : Aarch64_encode__Aarch64_types.Opcode.t -> Shape.packed -> variant list
+val variants : Rivet_aarch64_encode__Aarch64_types.Opcode.t -> Shape.packed -> variant list
 
 val entry :
   ?ext:string list ->
@@ -218,7 +218,7 @@ val entry :
   unit
 
 val bld :
-  Aarch64_encode__Aarch64_types.Opcode.t ->
+  Rivet_aarch64_encode__Aarch64_types.Opcode.t ->
   ('a, 'b, 'c, 'd, Aarch64_types.Instruction.t) Shape.t ->
   'd
 
@@ -1163,7 +1163,9 @@ module Builders : sig
   val bl : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
 
   val b_cond :
-    Aarch64_encode__Aarch64_types.Cond.t -> Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+    Rivet_aarch64_encode__Aarch64_types.Cond.t ->
+    Rivet_asm_core.Expr.t ->
+    Aarch64_types.Instruction.t
 
   val ret : unit -> Aarch64_types.Instruction.t
 

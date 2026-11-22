@@ -5,8 +5,8 @@ module Rv32 = Make (Riscv32_encode)
 module Rv64 = Make (Riscv64_encode)
 module X32 = Make (X86_32_encode)
 module X64 = Make (X86_64_encode)
-module Arm = Make (Arm_encode)
-module A64 = Make (Aarch64_encode)
+module Arm = Make (Rivet_arm_encode)
+module A64 = Make (Rivet_aarch64_encode)
 
 let int n = Rivet_foundation.Bigint.of_int n
 
@@ -31,11 +31,11 @@ let%expect_test "Instruction.mk values encode like their text" =
   let r w n = E.Operand.Reg (E.reg_at ~width:w n) in
   X64.check (E.Instruction.mk E.Opcode.Add 64 [ r 64 0; r 64 3 ]) "addq %rax, %rbx";
   X64.check (E.Instruction.mk E.Opcode.Mov 32 [ E.Operand.Imm (int 5); r 32 1 ]) "movl $5, %ecx");
-  (let module E = Arm_encode in
+  (let module E = Rivet_arm_encode in
   let r n = E.Operand.Reg (E.Reg.of_num n) in
   Arm.check (E.Instruction.mk E.Opcode.Add [ r 1; r 2; r 3 ]) "add r1, r2, r3";
   Arm.check (E.Instruction.mk E.Opcode.Mov [ r 0; E.Operand.Imm (int 7) ]) "mov r0, #7");
-  (let module E = Aarch64_encode in
+  (let module E = Rivet_aarch64_encode in
   let x name = E.Operand.Reg (Option.get (E.Reg.find name)) in
   A64.check (E.Instruction.mk E.Opcode.Add [ x "x1"; x "x2"; x "x3" ]) "add x1, x2, x3";
   A64.check

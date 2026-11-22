@@ -8,9 +8,9 @@
  (files ../../../targets/arm_asm/*.mli))
 
 (library
- (name arm_asm)
- (modules arm_asm)
+ (name rivet_arm_asm)
+ (modules rivet_arm_asm)
  (modes byte native melange)
- (libraries rivet_foundation rivet_asm_core arm_encode)
+ (libraries rivet_foundation rivet_asm_core rivet_arm_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

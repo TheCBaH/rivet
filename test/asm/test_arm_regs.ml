@@ -2,7 +2,7 @@
    values are the registers their names read as, and every register of a class assembles in an
    instruction that takes the class. *)
 
-open Arm_encode
+open Rivet_arm_encode
 
 module type REGS = Rivet_target_encode.REGS
 
