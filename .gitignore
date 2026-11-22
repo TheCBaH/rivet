@@ -9,6 +9,7 @@
 /ai
 /_build/
 /_build-ocaml5/
+/_build-opam/
 /test/browser/_work/
 /test/browser/node_modules/
 /.retrocpu/

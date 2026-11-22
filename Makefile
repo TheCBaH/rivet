@@ -59,7 +59,7 @@ melange:
 # cram diff itself rather than a comparison between two uncommitted outputs.
 # Separate dune invocations because RIVET_MELANGE changes which library stanzas
 # are enabled.
-js: build js-portable
+js: build js-portable namespace-melange
 	RIVET_BACKEND=melange RIVET_MELANGE=true opam exec -- dune build @runtest
 
 # The two legs that need no Melange, split out so the portable CI matrix can run
@@ -118,6 +118,19 @@ melange-optin:
 # tree. Needs no Melange.
 melange-mirror:
 	scripts/melange-mirror-check.sh
+
+# Policy 9 (docs/namespacing.md): every unit an inventory holds is Rivet_<x>,
+# apart from the vendored Fmt of the standalone and Melange builds, and every
+# library of scripts/namespace/expect is present. One goal per configuration;
+# the Melange one needs melc and so belongs to js, not ci.
+namespace-standalone: submodules
+	scripts/namespace-check-rivet.sh standalone
+namespace-opam: submodules
+	scripts/namespace-check-rivet.sh opam
+namespace-native-exec: submodules
+	scripts/namespace-check-rivet.sh native-exec
+namespace-melange: submodules
+	scripts/namespace-check-rivet.sh melange
 
 # The opt-in configuration for a consumer that supplies its own Fmt
 # (vendor/host/dune). test/consumer plays that consumer in a
@@ -451,7 +464,7 @@ exec: runner helpers abi-conform fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. js is not
 # here - it needs Melange, hence OCaml 4.14, so it is its own CI job.
-ci: fmt-check build test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff purity planted melange-optin melange-mirror external-deps js-portable
+ci: fmt-check build test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff purity planted melange-optin melange-mirror external-deps js-portable namespace-standalone namespace-opam namespace-native-exec
 
 # Checks only CI ran before: the real-browser harness (deep literals that Chromium cannot parse)
 # and an OCaml 5 build and test in that version's CI image (warnings that differ by compiler).
@@ -487,4 +500,5 @@ $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS)): asm-fixtures-verify-%: fix
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes \
   tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
   tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate \
-  tools-isa-residual-ledger isa-db-capture-check helpers runner abi-conform exec ci
+  tools-isa-residual-ledger isa-db-capture-check helpers runner abi-conform exec ci \
+  namespace-standalone namespace-opam namespace-native-exec namespace-melange

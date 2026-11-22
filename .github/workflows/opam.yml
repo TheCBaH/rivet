@@ -2,7 +2,7 @@ name: opam
 
 # Installs rivet the way a user would, on a standard OCaml setup (no devcontainer) and without
 # a source checkout: opam pins it from the git ref under test and fetches its dependencies,
-# err_trace from GitHub through pin-depends. Only test/install is checked out, a consumer
+# err_trace from GitHub through pin-depends. Only test/install and scripts are checked out, a consumer
 # built and run against the installed libraries.
 
 on:
@@ -42,7 +42,9 @@ jobs:
       with:
         ref: ${{ steps.ref.outputs.sha }}
         repository: ${{ steps.ref.outputs.repo }}
-        sparse-checkout: test/install
+        sparse-checkout: |
+          test/install
+          scripts
         sparse-checkout-cone-mode: true
     - name: ocaml
       uses: ocaml/setup-ocaml@v3
@@ -54,9 +56,15 @@ jobs:
       run: |
         opam pin add -n -y rivet \
           "https://github.com/${{ steps.ref.outputs.repo }}/archive/${{ steps.ref.outputs.sha }}.tar.gz"
+        opam pin add -n -y rivet-native-exec \
+          "https://github.com/${{ steps.ref.outputs.repo }}/archive/${{ steps.ref.outputs.sha }}.tar.gz"
     - name: install
-      run: opam install -y rivet
+      run: opam install -y rivet rivet-native-exec
     - name: test-only dependencies stay out of the install
       run: "! opam list --installed --silent ppx_expect"
     - name: consumer
       run: opam exec -- dune test --root test/install
+    - name: namespace check (installed rivet)
+      run: sh scripts/namespace-check-rivet.sh opam "$(opam var lib)/rivet"
+    - name: namespace check (installed rivet-native-exec)
+      run: sh scripts/namespace-check-rivet.sh native-exec "$(opam var lib)/rivet-native-exec"

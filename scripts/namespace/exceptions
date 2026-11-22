@@ -1,0 +1,4 @@
+# CONFIG PROVIDER UNIT: the vendored Fmt of the standalone and Melange builds
+# (policy 10); the opam build re-exports opam fmt and has no exception.
+standalone fmt Fmt
+melange rivet_fmt Fmt

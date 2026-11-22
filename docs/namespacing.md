@@ -313,3 +313,26 @@ encoders' `include`, the inferred interfaces of `rivet_aarch64_asm`,
 `Rivet_text_pipeline.Pipeline.Make`, `Rivet_target_features.Config.t`, an
 `ENCODE`) and the vendor-extension example against the install, and is
 refused one unit hidden by each new `private_modules`.
+
+## The check
+
+`scripts/namespace-check-rivet.sh <configuration>` (`make
+namespace-standalone`, `namespace-opam`, `namespace-native-exec`,
+`namespace-melange`) builds one configuration and runs
+`scripts/namespace-check.sh --fail` over its inventory: every `.cmi`
+(`.private/` included), `.cmj` and every unit `ocamlobjinfo` lists in a
+`.cma`/`.cmxa` must be `Rivet_<x>` (`Rivet_native_exec` for
+`rivet-native-exec`), and every library of `scripts/namespace/expect` must
+be present. The only exception (`scripts/namespace/exceptions`) is `Fmt`,
+from provider `fmt` in `standalone` and `rivet_fmt` in `melange`; `opam`
+has none: its `fmt` provider holds only the empty alias `Rivet_fmt` (the
+library re-exports opam `fmt`), and is not expected, so it may go away.
+
+- `ci` runs the first three; `js` runs the Melange one, which needs melc.
+  The Actions jobs run each as its own step, and the opam workflow checks
+  the installed `$(opam var lib)/rivet` and `rivet-native-exec` trees.
+- The Melange inventory is each mirror library's `.objs/melange`, under the
+  library's name. The four unpublished mirrors (`browser_jsoo`,
+  `browser_melange`, `smoke_fixtures`, `foundation_corpus`) are not checked:
+  nothing installs them and only Rivet's own programs link them.
+

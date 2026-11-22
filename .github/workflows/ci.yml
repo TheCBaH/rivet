@@ -159,6 +159,17 @@ jobs:
     - name: external deps
       run: |
         ${{ env.EXEC }} make external-deps
+    # Policy 9, one step per inventory (docs/namespacing.md).
+    - name: namespace check (standalone)
+      run: |
+        ${{ env.EXEC }} make namespace-standalone
+    - name: namespace check (opam)
+      run: |
+        ${{ env.EXEC }} make namespace-opam
+    - name: namespace check (native-exec)
+      if: matrix.platform != 'linux/i386' && matrix.platform != 'linux/arm/v7'
+      run: |
+        ${{ env.EXEC }} make namespace-native-exec
 
   # ABI v1 regression plus the complete six-profile v2 conformance suite.
   # Its own job, and deliberately not part of the matrix above: it builds the
@@ -361,6 +372,9 @@ jobs:
     - name: install melange
       run: |
         ${{ env.EXEC }} opam install -y melange
+    - name: namespace check (melange)
+      run: |
+        ${{ env.EXEC }} make namespace-melange
     # js-browser depends on js, so this single step both proves
     # native/jsoo/Melange equality and runs the real-browser smoke harness -
     # replacing a bare `make js` step rather than adding a second one avoids
