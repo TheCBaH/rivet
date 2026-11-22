@@ -19,7 +19,7 @@
 ; or `test`; the field exists from day one so the grammar does not have to
 ; change when the first test-only package arrives.
 
-(err_trace (>= 0.1.0) runtime (err_trace))
+(err_trace (>= 0.3.0) runtime (err_trace err_trace.err))
 (bos      (>= 0.2.1) runtime (bos))
 (fpath    (>= 0.7.3) runtime (fpath))
 (cmdliner (>= 1.2.0) runtime (cmdliner))

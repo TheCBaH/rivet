@@ -8,7 +8,7 @@
 (executable
  (name corpus_hashes)
  (modes byte native)
- (libraries rivet_tools err_trace bos fpath unix))
+ (libraries rivet_tools err_trace.err bos fpath unix))
 
 (rule
  (alias runtest)

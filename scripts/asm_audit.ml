@@ -259,7 +259,8 @@ let denied_prefixes = [ ("ctypes", "C-backed FFI"); ("core", "C-backed") ]
    so that the closure needs almost nothing from opam; err_trace is the one
    exception: dependency-free pure OCaml, installed with a Melange mode. Any
    addition here is a reviewed decision, not an accident. *)
-let external_allowlist : string list = [ "err_trace"; "err_trace-melange" ]
+let external_allowlist : string list =
+  [ "err_trace"; "err_trace.err"; "err_trace-melange"; "err_trace-melange.err" ]
 
 (* {1 Filesystem helpers} *)
 
@@ -682,6 +683,7 @@ let tool_transitive_allowlist =
     "digestif.ocaml";
     "eqaf";
     "err_trace";
+    "err_trace.err";
     "fmt";
     "fpath";
     "jsont";

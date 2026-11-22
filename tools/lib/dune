@@ -23,7 +23,7 @@
  (public_name rivet-tools.lib)
  (modes byte native)
  (libraries
-  err_trace
+  err_trace.err
   bos
   fpath
   digestif.ocaml

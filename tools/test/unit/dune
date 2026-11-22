@@ -32,7 +32,7 @@
   test_tool_parallel
   test_emit_guard)
  (modes byte native)
- (libraries rivet_tools err_trace bos fpath unix))
+ (libraries rivet_tools err_trace.err bos fpath unix))
 
 ; The committed generated files must pass the guard their emitters apply.
 

@@ -6,4 +6,4 @@
 (test
  (name consumer)
  (modules consumer)
- (libraries rivet.foundation rivet.driver rivet.x86_64 err_trace fmt))
+ (libraries rivet.foundation rivet.driver rivet.x86_64 err_trace.err fmt))

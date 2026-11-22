@@ -9,5 +9,5 @@
   rivet.asm_core
   rivet.image
   rivet.foundation
-  err_trace
+  err_trace.err
   fmt))

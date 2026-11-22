@@ -16,6 +16,6 @@
  (modes byte native)
  (libraries
   rivet_fmt
-  (re_export err_trace))
+  (re_export err_trace.err))
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
